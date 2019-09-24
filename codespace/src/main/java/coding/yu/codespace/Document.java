@@ -6,6 +6,10 @@ import android.view.KeyEvent;
 import java.util.ArrayList;
 import java.util.List;
 
+import coding.yu.codespace.lex.CLexer;
+import coding.yu.codespace.lex.Token;
+import coding.yu.codespace.lex.TokenType;
+
 /**
  * Created by yu on 9/20/2019.
  */
@@ -17,19 +21,23 @@ public class Document {
 
     private List<String> mLines = new ArrayList<>();
 
+    private CLexer mLaxer = new CLexer();
+    private List<Token> mTokenList = new ArrayList<>();
+    private Token mLastToken;
+
     public Document() {
         mLines.add("");
     }
 
     public void clear() {
         mText.delete(0, mText.length());
-        analyzeLines();
+        analyze(null);
     }
 
     public void setText(String s) {
         mText.delete(0, mText.length());
         mText.append(s);
-        analyzeLines();
+        analyze(null);
     }
 
     public int length() {
@@ -38,37 +46,37 @@ public class Document {
 
     public void insert(int offset, char c) {
         mText.insert(offset, c);
-        analyzeLinesIfNeed(null);
+        analyze(null);
     }
 
     public void insert(int offset, String s) {
         mText.insert(offset, s);
-        analyzeLinesIfNeed(null);
+        analyze(null);
     }
 
     public void append(String s) {
         mText.append(s);
-        analyzeLinesIfNeed(null);
+        analyze(null);
     }
 
     public void append(char c) {
         mText.append(c);
-        analyzeLinesIfNeed(null);
+        analyze(null);
     }
 
     public void replace(int start, int end, String s) {
         mText.replace(start, end, s);
-        analyzeLines();
+        analyze(null);
     }
 
     public void deleteLast() {
         mText.deleteCharAt(mText.length() - 1);
-        analyzeLinesIfNeed(null);
+        analyze(null);
     }
 
     public void delete(int start, int end) {
         mText.delete(start, end);
-        analyzeLinesIfNeed(null);
+        analyze(null);
     }
 
     public CharSequence getText() {
@@ -76,7 +84,7 @@ public class Document {
     }
 
 
-    //////////////////////   Line   //////////////////////
+    //////////////////////   Line & Keyword  //////////////////////
 
     /**
      * '\n' will locate at the end of line.
@@ -98,14 +106,15 @@ public class Document {
         return count;
     }
 
-    private void analyzeLinesIfNeed(String s) {
+    private void analyze(String s) {
         analyzeLines();
+        analyzeKeyword();
     }
 
     /**
      * Split text by '\n'. '\n' is end line of text, and it's also start of line on UI
      * So if '\n' is end of text, we need put a empty string to line array.
-     * */
+     */
     private void analyzeLines() {
         mLines.clear();
 
@@ -128,6 +137,68 @@ public class Document {
         }
 
         Log.e("Yu", "mLines:" + mLines.size() + " " + mLines.toString());
+    }
+
+    private void analyzeKeyword() {
+        mTokenList.clear();
+        mLaxer.parse(mText.toString(), mTokenList);
+    }
+
+    /**
+     * This time draw transaction can not use last time draw transaction token.
+     * So we need reset mLastToken when onDraw invoked.
+     */
+    public void resetLastToken() {
+        mLastToken = null;
+    }
+
+    public TokenType getTokenTypeByLineOffset(int line, int lineOffset) {
+        int offset = 0;
+        for (int i = 0; i < line; i++) {
+            offset += mLines.get(i).length();
+        }
+        offset += lineOffset;
+        return getTokenTypeByOffset(offset);
+    }
+
+    /**
+     * Avoid traversing every element, we need check last token first.
+     * <p>
+     * 1. mLastToken
+     * 2. mLastToken + 1
+     * 3. every element
+     */
+    public TokenType getTokenTypeByOffset(int offset) {
+        int[] skipIndex = {-1, -1};
+        if (mLastToken != null) {
+            if (offset >= mLastToken.start && offset < mLastToken.end()) {
+                return mLastToken.type;
+            }
+
+            int lastTokenIndex = mTokenList.indexOf(mLastToken);
+            int nextTokenIndex = lastTokenIndex + 1;
+            if (nextTokenIndex > 0 && nextTokenIndex < mTokenList.size()) {
+                Token nextToken = mTokenList.get(nextTokenIndex);
+                if (offset >= nextToken.start && offset < nextToken.end()) {
+                    mLastToken = nextToken;
+                    return nextToken.type;
+                }
+            }
+            skipIndex[0] = lastTokenIndex;
+            skipIndex[1] = nextTokenIndex;
+        }
+
+        for (int i = 0; i < mTokenList.size(); i++) {
+            if (i == skipIndex[0] || i == skipIndex[1]) {
+                continue;
+            }
+            Token token = mTokenList.get(i);
+            if (offset >= token.start && offset < token.end()) {
+                mLastToken = token;
+                return token.type;
+            }
+        }
+        return null;
     }
 
     public int getLineCount() {

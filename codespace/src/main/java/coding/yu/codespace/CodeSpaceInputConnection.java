@@ -86,7 +86,14 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
     @Override
     public boolean deleteSurroundingText(int beforeLength, int afterLength) {
         Log.d("Yu", "deleteSurroundingText:" + beforeLength + " " + afterLength);
-        return super.deleteSurroundingText(beforeLength, afterLength);
+
+        int start = mDocument.getCursorPosition() - beforeLength;
+        int end = mDocument.getCursorPosition() + afterLength;
+        if (start >= 0) {
+            mDocument.delete(start, end);
+            mCodeSpace.invalidate();
+        }
+        return true;
     }
 
     @Override

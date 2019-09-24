@@ -4,7 +4,6 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.text.InputType;
 import android.util.AttributeSet;
@@ -17,6 +16,9 @@ import android.view.inputmethod.InputConnection;
 
 import androidx.annotation.Nullable;
 
+import coding.yu.codespace.highlight.ColorStyle;
+import coding.yu.codespace.highlight.LightColor;
+import coding.yu.codespace.lex.TokenType;
 import coding.yu.codespace.touch.TouchGestureListener;
 
 /**
@@ -38,6 +40,8 @@ public class CodeSpace extends View {
 
     private int mCharWidth;
     private int mSpaceWidth;
+
+    private ColorStyle mColorStyle = new LightColor();
 
     public CodeSpace(Context context) {
         super(context);
@@ -92,8 +96,6 @@ public class CodeSpace extends View {
                 | EditorInfo.IME_FLAG_NO_EXTRACT_UI;
         if (mInputConnection == null) {
             mInputConnection = new CodeSpaceInputConnection(this);
-        } else {
-//            mInputConnection.resetComposingState();
         }
         return mInputConnection;
     }
@@ -137,9 +139,7 @@ public class CodeSpace extends View {
     }
 
 
-    //------------------
-    // Draw everything
-    //------------------
+    //////////////////////   Draw everything  //////////////////////
 
     @Override
     protected void onDraw(Canvas canvas) {
@@ -153,6 +153,7 @@ public class CodeSpace extends View {
 
         Log.e("Yu", "needLineBgIndex:" + needLineBgIndex);
 
+        mDocument.resetLastToken();
         for (int i = 0; i < mDocument.getLineCount(); i++) {
             if (i == needLineBgIndex) {
                 drawLineBackground(canvas, needLineBgIndex);
@@ -169,13 +170,28 @@ public class CodeSpace extends View {
         String lineStr = mDocument.getLineText(lineIndex);
         for (int i = 0; i < lineStr.length(); i++) {
             char c = lineStr.charAt(i);
-            drawChar(canvas, c, x, y);
+            TokenType tokenType = mDocument.getTokenTypeByLineOffset(lineIndex, i);
+            Log.e("Yu", "tokenType:" + tokenType);
+            drawChar(canvas, c, x, y, tokenType);
             x = x + getCharWidth(c);
         }
     }
 
-    private void drawChar(Canvas canvas, char c, int x, int y) {
+    private void drawChar(Canvas canvas, char c, int x, int y, TokenType tokenType) {
         char[] chars = {c};
+        if (tokenType == TokenType.KEYWORD2) {
+            mTextPaint.setColor(mColorStyle.getKeyword2Color());
+        } else if (tokenType == TokenType.KEYWORD) {
+            mTextPaint.setColor(mColorStyle.getKeywordColor());
+        } else if (tokenType == TokenType.TYPE) {
+            mTextPaint.setColor(mColorStyle.getTypeColor());
+        } else if (tokenType == TokenType.STRING) {
+            mTextPaint.setColor(mColorStyle.getStringColor());
+        } else if (tokenType == TokenType.COMMENT) {
+            mTextPaint.setColor(mColorStyle.getCommentColor());
+        } else {
+            mTextPaint.setColor(mColorStyle.getCommonTextColor());
+        }
         canvas.drawText(chars, 0, 1, x, y, mTextPaint);
     }
 
@@ -196,9 +212,7 @@ public class CodeSpace extends View {
     }
 
 
-    //------------------
-    // sp2px
-    //------------------
+    //////////////////////   sp2px  //////////////////////
 
     private int sp2px(float spValue) {
         final float fontScale = getContext().getResources().getDisplayMetrics().scaledDensity;
