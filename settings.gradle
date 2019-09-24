@@ -1,0 +1,2 @@
+include ':sample', ':codespace'
+rootProject.name='CodeSpace'
