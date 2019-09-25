@@ -9,6 +9,8 @@ import android.view.inputmethod.BaseInputConnection;
  */
 public class CodeSpaceInputConnection extends BaseInputConnection {
 
+    private static final String TAG = "CodeSpaceInputConnectio";
+
     private CodeSpace mCodeSpace;
     private Document mDocument;
 
@@ -22,13 +24,13 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
 
     @Override
     public boolean beginBatchEdit() {
-//        Log.d("Yu", "beginBatchEdit");
+        Log.d("Yu", "beginBatchEdit");
         return super.beginBatchEdit();
     }
 
     @Override
     public boolean endBatchEdit() {
-//        Log.d("Yu", "endBatchEdit");
+        Log.d("Yu", "endBatchEdit");
         return super.endBatchEdit();
     }
 
@@ -42,6 +44,15 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
                 text.toString());
 
         mComposingTextLength = 0;
+
+        if (newCursorPosition == 1) {
+            mDocument.moveCursor(mDocument.getCursorPosition() + text.length(), false);
+        } else {
+            Log.e(TAG, "commitText newCursorPosition != 1, need check!");
+        }
+
+        Log.e("Yu", "Cursor pos:" + mDocument.getCursorPosition());
+
         mCodeSpace.invalidate();
 
         return true;
@@ -78,8 +89,16 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
                 );
 
         mComposingTextLength = text.length();
-        mCodeSpace.invalidate();
 
+        if (newCursorPosition == 1) {
+            mDocument.moveCursor(mDocument.getCursorPosition() + text.length(), false);
+        } else {
+            Log.e(TAG, "setComposingText newCursorPosition != 1, need check!");
+        }
+
+        Log.e("Yu", "Cursor pos:" + mDocument.getCursorPosition());
+
+        mCodeSpace.invalidate();
         return true;
     }
 
@@ -91,6 +110,7 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
         int end = mDocument.getCursorPosition() + afterLength;
         if (start >= 0) {
             mDocument.delete(start, end);
+            mDocument.moveCursor(start, false);
             mCodeSpace.invalidate();
         }
         return true;
@@ -132,4 +152,6 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
         Log.d("Yu", "reportFullscreenMode:" + enabled);
         return super.reportFullscreenMode(enabled);
     }
+
+
 }

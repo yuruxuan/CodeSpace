@@ -56,6 +56,10 @@ public class KeyCodeConverter {
             return ' ';
         }
 
+        if (KeyEvent.KEYCODE_TAB == code) {
+            return '\t';
+        }
+
         return 0;
     }
 }

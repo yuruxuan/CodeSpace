@@ -25,9 +25,16 @@ public class Document {
     private List<Token> mTokenList = new ArrayList<>();
     private Token mLastToken;
 
-    public Document() {
-        mLines.add("");
+    private int mCursorStart;
+    private int mCursorEnd;
+
+    private CursorMoveCallback mCursorMoveCallback;
+
+    public void setCursorMoveCallback(CursorMoveCallback callback) {
+        this.mCursorMoveCallback = callback;
     }
+
+    //////////////////////   Edit  //////////////////////
 
     public void clear() {
         mText.delete(0, mText.length());
@@ -79,31 +86,39 @@ public class Document {
         analyze(null);
     }
 
-    public CharSequence getText() {
-        return mText.toString();
-    }
-
 
     //////////////////////   Line & Keyword  //////////////////////
 
-    /**
-     * '\n' will locate at the end of line.
-     */
-    public int findLineByOffset(int offset) {
-        if (offset < 0 || mText.length() > offset) {
+    public int findLineForDraw(int offset) {
+        if (offset < 0 || mText.length() < offset) {
             return -1;
         }
 
-        // Maybe offset is equals mText.length()
-        offset = Math.min(offset, mText.length() - 1);
+        if (mText.length() == 0) {
+            return 0;
+        }
 
-        int count = 0;
-        for (int i = 0; i <= offset; i++) {
-            if (mText.charAt(i) == '\n') {
-                count++;
+        int sum = 0;
+        for (int i = 0; i < mLines.size(); i++) {
+            sum += mLines.get(i).length();
+            if (sum > offset) {
+                return i;
+            } else if (sum == offset) { // offset is end of line.
+                if (mText.charAt(sum - 1) == '\n') { // '\n' is end of line.
+                    return i + 1;
+                } else {
+                    return i;
+                }
             }
         }
-        return count;
+        return -1;
+    }
+
+    public int getLineCountForDraw() {
+        if (mText.length() == 0 || mText.charAt(mText.length() - 1) == '\n') {
+            return mLines.size() + 1;
+        }
+        return mLines.size();
     }
 
     private void analyze(String s) {
@@ -112,8 +127,7 @@ public class Document {
     }
 
     /**
-     * Split text by '\n'. '\n' is end line of text, and it's also start of line on UI
-     * So if '\n' is end of text, we need put a empty string to line array.
+     * Split text by '\n'. '\n' is end line of text
      */
     private void analyzeLines() {
         mLines.clear();
@@ -132,10 +146,6 @@ public class Document {
             mLines.add(mText.substring(from, to));
         }
 
-        if (mText.length() == 0 || mText.charAt(mText.length() - 1) == '\n') {
-            mLines.add("");
-        }
-
         Log.e("Yu", "mLines:" + mLines.size() + " " + mLines.toString());
     }
 
@@ -146,7 +156,7 @@ public class Document {
 
     /**
      * This time draw transaction can not use last time draw transaction token.
-     * So we need reset mLastToken when onDraw invoked.
+     * So we need reset mLastToken when onDraw() invoked.
      */
     public void resetLastToken() {
         mLastToken = null;
@@ -201,12 +211,12 @@ public class Document {
         return null;
     }
 
-    public int getLineCount() {
-        return mLines.size();
-    }
-
     public String getLineText(int line) {
-        return mLines.get(line);
+        if (line < mLines.size()) {
+            return mLines.get(line);
+        } else {
+            return "";
+        }
     }
 
 
@@ -223,18 +233,106 @@ public class Document {
      * 8
      */
     public int getCursorPosition() {
-        return mText.length();
+        return mCursorStart;
+    }
+
+    public int getCursorStart() {
+        return mCursorStart;
+    }
+
+    public int getCursorEnd() {
+        return mCursorEnd;
+    }
+
+    private void setCursorPosition(int position) {
+        this.mCursorStart = this.mCursorEnd = position;
+    }
+
+    public void moveCursor(int offset, boolean isRelative) {
+        int absOffset;
+        if (isRelative) {
+            absOffset = getCursorPosition() + offset;
+            absOffset = Math.min(absOffset, mText.length());
+            absOffset = Math.max(absOffset, 0);
+        } else {
+            absOffset = Math.min(offset, mText.length());
+            absOffset = Math.max(absOffset, 0);
+        }
+
+        boolean needUpdate = absOffset != mCursorStart;
+
+        if (needUpdate) {
+            setCursorPosition(absOffset);
+
+            if (mCursorMoveCallback != null) {
+                mCursorMoveCallback.onCursorMoved(offset, offset);
+            }
+        }
+    }
+
+    public void moveCursorLeft() {
+        moveCursor(-1, true);
+    }
+
+    public void moveCursorRight() {
+        moveCursor(1, true);
+    }
+
+    public void moveCursorUp() {
+
+    }
+
+    public void moveCursorDown() {
+
     }
 
 
     //////////////////////   KeyEvent   //////////////////////
 
+    /**
+     * KeyEvent is received from:
+     * 1.Input Method
+     * 2.Framework > Activity > View
+     */
     public void handleKeyEvent(KeyEvent event) {
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
-            char ch = KeyCodeConverter.convert(event.getKeyCode());
-            if (ch != 0) {
-                insert(getCursorPosition(), ch);
+            if (handleDirectionControl(event)) {
+                // Do nothing...
+            } else {
+                char ch = KeyCodeConverter.convert(event.getKeyCode());
+                if (ch != 0) {
+                    insert(getCursorPosition(), ch);
+                    moveCursorRight();
+                }
             }
         }
+    }
+
+    private boolean handleDirectionControl(KeyEvent event) {
+        if (event.getKeyCode() == KeyEvent.KEYCODE_DPAD_DOWN) {
+            moveCursorDown();
+            return true;
+        }
+
+        if (event.getKeyCode() == KeyEvent.KEYCODE_DPAD_UP) {
+            moveCursorUp();
+            return true;
+        }
+
+        if (event.getKeyCode() == KeyEvent.KEYCODE_DPAD_LEFT) {
+            moveCursorLeft();
+            return true;
+        }
+
+        if (event.getKeyCode() == KeyEvent.KEYCODE_DPAD_RIGHT) {
+            moveCursorRight();
+            return true;
+        }
+
+        return false;
+    }
+
+    public interface CursorMoveCallback {
+        void onCursorMoved(int start, int end);
     }
 }

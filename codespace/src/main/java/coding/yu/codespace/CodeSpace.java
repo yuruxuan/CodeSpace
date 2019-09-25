@@ -9,10 +9,12 @@ import android.text.InputType;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.GestureDetector;
+import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
+import android.view.inputmethod.InputMethodManager;
 
 import androidx.annotation.Nullable;
 
@@ -24,9 +26,10 @@ import coding.yu.codespace.touch.TouchGestureListener;
 /**
  * Created by yu on 9/18/2019.
  */
-public class CodeSpace extends View {
+public class CodeSpace extends View implements Document.CursorMoveCallback {
 
     private static final int DEFAULT_TEXT_SIZE_SP = 16;
+    private static final int DEFAULT_CURSOR_WIDTH_DP = 2;
 
     private InputConnection mInputConnection;
     private GestureDetector mGestureDetector;
@@ -42,6 +45,8 @@ public class CodeSpace extends View {
     private int mSpaceWidth;
 
     private ColorStyle mColorStyle = new LightColor();
+
+    private InputMethodManager mInputMethodManager;
 
     public CodeSpace(Context context) {
         super(context);
@@ -59,7 +64,9 @@ public class CodeSpace extends View {
     }
 
     private void init() {
+        mInputMethodManager = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
         mGestureDetector = TouchGestureListener.setup(this);
+        mDocument.setCursorMoveCallback(this);
 
         mTextPaint.setAntiAlias(true);
         mTextPaint.setColor(Color.BLACK);
@@ -67,6 +74,8 @@ public class CodeSpace extends View {
         mTextPaint.setTypeface(Typeface.MONOSPACE);
 
         mLineBackgroundPaint.setColor(0x33ff0000);
+
+        mCursorPaint.setColor(0x9900ff00);
 
         mCharWidth = (int) mTextPaint.measureText("x");
         mSpaceWidth = (int) mTextPaint.measureText(" ");
@@ -97,6 +106,7 @@ public class CodeSpace extends View {
         if (mInputConnection == null) {
             mInputConnection = new CodeSpaceInputConnection(this);
         }
+
         return mInputConnection;
     }
 
@@ -110,6 +120,19 @@ public class CodeSpace extends View {
             }
         }
         return true;
+    }
+
+    /**
+     * Android Develop Doc:
+     * Editor authors, you need to call this method whenever the cursor moves in your editor.
+     * Remember that in addition to doing this, your editor needs to always supply current
+     * cursor values in EditorInfo#initialSelStart and EditorInfo#initialSelEnd every time
+     * View.onCreateInputConnection(EditorInfo) is called, which happens whenever the keyboard
+     * shows up or the focus changes to a text field, among other cases.
+     */
+    @Override
+    public void onCursorMoved(int start, int end) {
+        mInputMethodManager.updateSelection(this, start, end, -1, -1);
     }
 
     private int getRowHeight() {
@@ -148,19 +171,21 @@ public class CodeSpace extends View {
     }
 
     private void realDraw(Canvas canvas) {
-        int needLineBgIndex = mDocument.findLineByOffset(mDocument.getCursorPosition());
-        int needSelectionIndex = 0;
+        int cursorLineIndex = mDocument.findLineForDraw(mDocument.getCursorPosition());
 
-        Log.e("Yu", "needLineBgIndex:" + needLineBgIndex);
+        Log.e("Yu", "needLineBgIndex:" + cursorLineIndex);
 
         mDocument.resetLastToken();
-        for (int i = 0; i < mDocument.getLineCount(); i++) {
-            if (i == needLineBgIndex) {
-                drawLineBackground(canvas, needLineBgIndex);
+        for (int i = 0; i < mDocument.getLineCountForDraw(); i++) {
+            if (i == cursorLineIndex) {
+                drawLineBackground(canvas, cursorLineIndex);
             }
             drawSelection(canvas);
             drawLineText(canvas, i);
-            drawCursor(canvas, i);
+
+            if (i == cursorLineIndex) {
+                drawCursor(canvas, cursorLineIndex);
+            }
         }
     }
 
@@ -171,7 +196,6 @@ public class CodeSpace extends View {
         for (int i = 0; i < lineStr.length(); i++) {
             char c = lineStr.charAt(i);
             TokenType tokenType = mDocument.getTokenTypeByLineOffset(lineIndex, i);
-            Log.e("Yu", "tokenType:" + tokenType);
             drawChar(canvas, c, x, y, tokenType);
             x = x + getCharWidth(c);
         }
@@ -208,14 +232,43 @@ public class CodeSpace extends View {
     }
 
     private void drawCursor(Canvas canvas, int lineIndex) {
+        int count = 0;
+        for (int i = 0; i < lineIndex; i++) {
+            count += mDocument.getLineText(i).length();
+        }
+        int lineOffset = mDocument.getCursorPosition() - count;
 
+        int x = 0;
+        String lineStr = mDocument.getLineText(lineIndex);
+        for (int i = 0; i < lineOffset; i++) {
+            char c = lineStr.charAt(i);
+            x = x + getCharWidth(c);
+        }
+
+        int cursorWidth = dp2px(DEFAULT_CURSOR_WIDTH_DP);
+        canvas.drawRect(x - cursorWidth / 2,
+                lineIndex * getRowHeight(),
+                x + cursorWidth / 2,
+                (lineIndex + 1) * getRowHeight(),
+                mCursorPaint);
     }
 
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        mDocument.handleKeyEvent(event);
+        invalidate();
+        return true;
+    }
 
-    //////////////////////   sp2px  //////////////////////
+    //////////////////////   Utils  //////////////////////
 
     private int sp2px(float spValue) {
         final float fontScale = getContext().getResources().getDisplayMetrics().scaledDensity;
         return (int) (spValue * fontScale + 0.5f);
+    }
+
+    private int dp2px(float dpValue) {
+        final float scale = getContext().getResources().getDisplayMetrics().density;
+        return (int) (dpValue * scale + 0.5f);
     }
 }
