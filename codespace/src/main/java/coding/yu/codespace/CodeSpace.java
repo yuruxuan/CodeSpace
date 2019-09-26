@@ -26,7 +26,7 @@ import coding.yu.codespace.touch.TouchGestureListener;
 /**
  * Created by yu on 9/18/2019.
  */
-public class CodeSpace extends View implements Document.CursorMoveCallback {
+public class CodeSpace extends View implements Document.CursorMoveCallback, Document.OffsetMeasure {
 
     private static final int DEFAULT_TEXT_SIZE_SP = 16;
     private static final int DEFAULT_CURSOR_WIDTH_DP = 2;
@@ -43,6 +43,9 @@ public class CodeSpace extends View implements Document.CursorMoveCallback {
 
     private int mCharWidth;
     private int mSpaceWidth;
+
+    private int mCursorCenterX;
+    private int mCursorCenterY;
 
     private ColorStyle mColorStyle = new LightColor();
 
@@ -67,6 +70,7 @@ public class CodeSpace extends View implements Document.CursorMoveCallback {
         mInputMethodManager = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
         mGestureDetector = TouchGestureListener.setup(this);
         mDocument.setCursorMoveCallback(this);
+        mDocument.setOffsetMeasure(this);
 
         mTextPaint.setAntiAlias(true);
         mTextPaint.setColor(Color.BLACK);
@@ -125,14 +129,68 @@ public class CodeSpace extends View implements Document.CursorMoveCallback {
     /**
      * Android Develop Doc:
      * Editor authors, you need to call this method whenever the cursor moves in your editor.
-     * Remember that in addition to doing this, your editor needs to always supply current
-     * cursor values in EditorInfo#initialSelStart and EditorInfo#initialSelEnd every time
-     * View.onCreateInputConnection(EditorInfo) is called, which happens whenever the keyboard
-     * shows up or the focus changes to a text field, among other cases.
      */
     @Override
     public void onCursorMoved(int start, int end) {
         mInputMethodManager.updateSelection(this, start, end, -1, -1);
+    }
+
+    @Override
+    public int getLastLineRelativeOffset() {
+        int x = mCursorCenterX;
+        int y = Math.max(0, mCursorCenterY - getRowHeight());
+        return getOffsetNearXY(x, y);
+    }
+
+    @Override
+    public int getNextLineRelativeOffset() {
+        int x = mCursorCenterX;
+        int y = Math.min(mDocument.getLineCountForDraw() * getRowHeight(), mCursorCenterY + getRowHeight());
+        return getOffsetNearXY(x, y);
+    }
+
+    private int getOffsetNearXY(int x, int y) {
+        int rowHeight = getRowHeight();
+
+        int targetLineIndex = mDocument.getLineCountForDraw() - 1;
+        for (int i = 0; i <= targetLineIndex; i++) {
+            if (y < rowHeight * (i + 1)) {
+                targetLineIndex = i;
+                break;
+            }
+        }
+
+        return getOffsetNearXLineIndex(x, targetLineIndex);
+    }
+
+    private int getOffsetNearXLineIndex(int x, int lineIndex) {
+        String lineStr = mDocument.getLineText(lineIndex);
+
+        int tempX = 0;
+        int targetLineOffset = 0;
+        for (int i = 0; i < lineStr.length(); i++) {
+            targetLineOffset = i;
+
+            char c = lineStr.charAt(i);
+            tempX = tempX + getCharWidth(c);
+            if (tempX > x) {
+                break;
+            }
+        }
+
+        int offset = targetLineOffset;
+
+        for (int i = 0; i < lineIndex; i++) {
+            offset += mDocument.getLineText(i).length();
+        }
+
+        if (lineIndex == mDocument.getLineCountForDraw() - 1 && tempX < x) {
+            offset += 1;
+        }
+
+        Log.e("Yu", "getOffsetNearXLineIndex: lineIndex：" + lineIndex + " " + offset);
+
+        return offset;
     }
 
     private int getRowHeight() {
@@ -147,7 +205,7 @@ public class CodeSpace extends View implements Document.CursorMoveCallback {
 
     private int getCharWidth(char c) {
         if (c == '\n') {
-            return mSpaceWidth;
+            return 0;
         }
 
         if (c == '\t') {
@@ -245,6 +303,9 @@ public class CodeSpace extends View implements Document.CursorMoveCallback {
             x = x + getCharWidth(c);
         }
 
+        mCursorCenterX = x;
+        mCursorCenterY = (int) (lineIndex * getRowHeight() + 0.5f * getRowHeight());
+
         int cursorWidth = dp2px(DEFAULT_CURSOR_WIDTH_DP);
         canvas.drawRect(x - cursorWidth / 2,
                 lineIndex * getRowHeight(),
@@ -259,6 +320,16 @@ public class CodeSpace extends View implements Document.CursorMoveCallback {
         invalidate();
         return true;
     }
+
+
+    //////////////////////   Touch  //////////////////////
+
+    public void onSingleTapUp(int x, int y) {
+        int offset = getOffsetNearXY(x, y);
+        mDocument.moveCursor(offset, false);
+        invalidate();
+    }
+
 
     //////////////////////   Utils  //////////////////////
 

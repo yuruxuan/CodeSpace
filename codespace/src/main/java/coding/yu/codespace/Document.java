@@ -25,13 +25,18 @@ public class Document {
     private List<Token> mTokenList = new ArrayList<>();
     private Token mLastToken;
 
-    private int mCursorStart;
-    private int mCursorEnd;
+    private int mCursorPosition;
 
     private CursorMoveCallback mCursorMoveCallback;
 
     public void setCursorMoveCallback(CursorMoveCallback callback) {
         this.mCursorMoveCallback = callback;
+    }
+
+    private OffsetMeasure mOffsetMeasure;
+
+    public void setOffsetMeasure(OffsetMeasure offsetMeasure) {
+        this.mOffsetMeasure = offsetMeasure;
     }
 
     //////////////////////   Edit  //////////////////////
@@ -86,6 +91,10 @@ public class Document {
         analyze(null);
     }
 
+    @Override
+    public String toString() {
+        return mText.toString();
+    }
 
     //////////////////////   Line & Keyword  //////////////////////
 
@@ -155,6 +164,36 @@ public class Document {
     }
 
     /**
+     * Get last line cursor offset.
+     * <p>
+     * eg:
+     * current offset:5
+     * 1  2  3  \n
+     * 3 |4
+     * <p>
+     * return:2
+     * 1 |2  3  \n
+     * 3  4
+     */
+    private int getLastLineOffset(int offset) {
+        int sum = 0;
+        int currentLineIndex = -1;
+        for (int i = 0; i < mLines.size(); i++) {
+            sum += mLines.get(i).length();
+            if (offset <= sum) {
+                currentLineIndex = i;
+                break;
+            }
+        }
+
+        return -1;
+    }
+
+    private int getNextLineOffset(int offset) {
+        return -1;
+    }
+
+    /**
      * This time draw transaction can not use last time draw transaction token.
      * So we need reset mLastToken when onDraw() invoked.
      */
@@ -211,6 +250,9 @@ public class Document {
         return null;
     }
 
+    /**
+     * We think every line has string.
+     */
     public String getLineText(int line) {
         if (line < mLines.size()) {
             return mLines.get(line);
@@ -218,7 +260,6 @@ public class Document {
             return "";
         }
     }
-
 
     //////////////////////   Cursor   //////////////////////
 
@@ -233,21 +274,25 @@ public class Document {
      * 8
      */
     public int getCursorPosition() {
-        return mCursorStart;
+        return mCursorPosition;
     }
 
-    public int getCursorStart() {
-        return mCursorStart;
+    public int getSelectionStart() {
+        return -1;
     }
 
-    public int getCursorEnd() {
-        return mCursorEnd;
+    public int getSelectionEnd() {
+        return -1;
     }
 
     private void setCursorPosition(int position) {
-        this.mCursorStart = this.mCursorEnd = position;
+        this.mCursorPosition = position;
     }
 
+    /**
+     * There is a safe method to move cursor. The offset will be [0, mText.length()]
+     * If cursor position is not changed, we will do nothing.
+     * */
     public void moveCursor(int offset, boolean isRelative) {
         int absOffset;
         if (isRelative) {
@@ -259,7 +304,7 @@ public class Document {
             absOffset = Math.max(absOffset, 0);
         }
 
-        boolean needUpdate = absOffset != mCursorStart;
+        boolean needUpdate = absOffset != mCursorPosition;
 
         if (needUpdate) {
             setCursorPosition(absOffset);
@@ -278,12 +323,21 @@ public class Document {
         moveCursor(1, true);
     }
 
+    /**
+     * Move cursor up is very similar to touch the relative position at last line.
+     */
     public void moveCursorUp() {
-
+        if (mOffsetMeasure != null) {
+            int offset = mOffsetMeasure.getLastLineRelativeOffset();
+            moveCursor(offset, false);
+        }
     }
 
     public void moveCursorDown() {
-
+        if (mOffsetMeasure != null) {
+            int offset = mOffsetMeasure.getNextLineRelativeOffset();
+            moveCursor(offset, false);
+        }
     }
 
 
@@ -332,7 +386,16 @@ public class Document {
         return false;
     }
 
+
+    //////////////////////   Interface   //////////////////////
+
     public interface CursorMoveCallback {
         void onCursorMoved(int start, int end);
+    }
+
+    public interface OffsetMeasure {
+        int getLastLineRelativeOffset();
+
+        int getNextLineRelativeOffset();
     }
 }

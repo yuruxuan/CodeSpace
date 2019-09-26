@@ -88,13 +88,13 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
                 text.toString()
                 );
 
-        mComposingTextLength = text.length();
-
         if (newCursorPosition == 1) {
-            mDocument.moveCursor(mDocument.getCursorPosition() + text.length(), false);
+            mDocument.moveCursor(mDocument.getCursorPosition() + text.length() - mComposingTextLength, false);
         } else {
             Log.e(TAG, "setComposingText newCursorPosition != 1, need check!");
         }
+
+        mComposingTextLength = text.length();
 
         Log.e("Yu", "Cursor pos:" + mDocument.getCursorPosition());
 
@@ -131,14 +131,19 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
 
     @Override
     public CharSequence getTextBeforeCursor(int length, int flags) {
-        Log.d("Yu", "getTextBeforeCursor:" + length + " " + flags);
-        return super.getTextBeforeCursor(length, flags);
+        int start = Math.max(0, mDocument.getCursorPosition() - length);
+        String s = mDocument.toString().substring(start, mDocument.getCursorPosition());
+        Log.d("Yu", "getTextBeforeCursor:" + s + " " + length);
+        return s;
     }
 
     @Override
     public CharSequence getTextAfterCursor(int length, int flags) {
-        Log.d("Yu", "getTextAfterCursor:" + length + " " + flags);
-        return super.getTextAfterCursor(length, flags);
+        String s = mDocument.toString();
+        int end = Math.min(mDocument.toString().length(), mDocument.getCursorPosition() + 1);
+        String logStr = mDocument.toString().substring(mDocument.getCursorPosition(), end);
+        Log.d("Yu", "getTextAfterCursor:" + logStr + " " + length);
+        return s;
     }
 
     @Override

@@ -35,6 +35,7 @@ public class TouchGestureListener extends GestureDetector.SimpleOnGestureListene
     @Override
     public boolean onSingleTapUp(MotionEvent e) {
         IMEHelper.show(mCodeSpace);
+        mCodeSpace.onSingleTapUp((int)e.getX(), (int) e.getY());
 
         return true;
     }
