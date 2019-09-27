@@ -30,6 +30,8 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
 
     private static final int DEFAULT_TEXT_SIZE_SP = 16;
     private static final int DEFAULT_CURSOR_WIDTH_DP = 2;
+    private static final int DEFAULT_COMPOSING_UNDERLINE_WIDTH_DP = 1;
+    private static final int COMPOSING_UNDERLINE_TEXT_SPACE_PX = 1;
 
     private InputConnection mInputConnection;
     private GestureDetector mGestureDetector;
@@ -41,7 +43,7 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
     private Paint mTextPaint = new Paint();
     private Paint mCursorPaint = new Paint();
 
-    private int mCharWidth;
+    private int mComposingUnderlineWidth;
     private int mSpaceWidth;
 
     private int mCursorCenterX;
@@ -76,12 +78,12 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
         mTextPaint.setColor(Color.BLACK);
         mTextPaint.setTextSize(sp2px(DEFAULT_TEXT_SIZE_SP));
         mTextPaint.setTypeface(Typeface.MONOSPACE);
+        mTextPaint.setStrokeWidth(dp2px(DEFAULT_COMPOSING_UNDERLINE_WIDTH_DP));
 
         mLineBackgroundPaint.setColor(0x33ff0000);
 
         mCursorPaint.setColor(0x9900ff00);
 
-        mCharWidth = (int) mTextPaint.measureText("x");
         mSpaceWidth = (int) mTextPaint.measureText(" ");
 
         setFocusable(true);
@@ -133,6 +135,7 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
     @Override
     public void onCursorMoved(int start, int end) {
         mInputMethodManager.updateSelection(this, start, end, -1, -1);
+        invalidate();
     }
 
     @Override
@@ -195,12 +198,12 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
 
     private int getRowHeight() {
         Paint.FontMetricsInt metrics = mTextPaint.getFontMetricsInt();
-        return (metrics.descent - metrics.ascent);
+        return (metrics.bottom - metrics.top);
     }
 
     public int getPaintBaseline(int row) {
         Paint.FontMetricsInt metrics = mTextPaint.getFontMetricsInt();
-        return (row + 1) * getRowHeight() - metrics.descent;
+        return (row + 1) * getRowHeight() - metrics.bottom;
     }
 
     private int getCharWidth(char c) {
@@ -242,6 +245,9 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
             drawLineText(canvas, i);
 
             if (i == cursorLineIndex) {
+                if (mDocument.isComposingTextExist()) {
+                    drawComposingTextUnderline(canvas, cursorLineIndex);
+                }
                 drawCursor(canvas, cursorLineIndex);
             }
         }
@@ -255,8 +261,38 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
             char c = lineStr.charAt(i);
             TokenType tokenType = mDocument.getTokenTypeByLineOffset(lineIndex, i);
             drawChar(canvas, c, x, y, tokenType);
-            x = x + getCharWidth(c);
+            int charWidth = getCharWidth(c);
+            x = x + charWidth;
         }
+    }
+
+    private void drawComposingTextUnderline(Canvas canvas, int lineIndex) {
+        int sum = 0;
+        for (int i = 0; i < lineIndex; i++) {
+            sum += mDocument.getLineText(i).length();
+        }
+
+        int currLineStart = mDocument.getComposingIndexStart() - sum;
+
+        int width = 0;
+        for (int i = 0; i < mDocument.getComposingLength(); i++) {
+            char c = mDocument.getLineText(lineIndex).charAt(currLineStart + i);
+            width += getCharWidth(c);
+        }
+
+        int startX = 0;
+        for (int i = 0; i < currLineStart; i++) {
+            char c = mDocument.getLineText(lineIndex).charAt(i);
+            startX += getCharWidth(c);
+        }
+
+        int baseline = getRowHeight() * (lineIndex + 1);
+        canvas.drawLine(
+                startX,
+                baseline + COMPOSING_UNDERLINE_TEXT_SPACE_PX,
+                startX + width,
+                baseline + COMPOSING_UNDERLINE_TEXT_SPACE_PX,
+                mTextPaint);
     }
 
     private void drawChar(Canvas canvas, char c, int x, int y, TokenType tokenType) {
@@ -317,7 +353,6 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         mDocument.handleKeyEvent(event);
-        invalidate();
         return true;
     }
 
@@ -327,7 +362,6 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
     public void onSingleTapUp(int x, int y) {
         int offset = getOffsetNearXY(x, y);
         mDocument.moveCursor(offset, false);
-        invalidate();
     }
 
 

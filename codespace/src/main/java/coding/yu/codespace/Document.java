@@ -27,6 +27,9 @@ public class Document {
 
     private int mCursorPosition;
 
+    private int mComposingIndexStart;
+    private int mComposingIndexEnd;
+
     private CursorMoveCallback mCursorMoveCallback;
 
     public void setCursorMoveCallback(CursorMoveCallback callback) {
@@ -95,6 +98,38 @@ public class Document {
     public String toString() {
         return mText.toString();
     }
+
+
+    //////////////////////   Composing Text  //////////////////////
+
+    public void setComposingRegion(int start, int end) {
+        Log.e("Yu", "setComposingRegion " + start + " " + end);
+        this.mComposingIndexStart = start;
+        this.mComposingIndexEnd = end;
+    }
+
+    public int getComposingIndexStart() {
+        return this.mComposingIndexStart;
+    }
+
+    public int getComposingIndexEnd() {
+        return this.mComposingIndexEnd;
+    }
+
+    public int getComposingLength() {
+        return this.mComposingIndexEnd - this.mComposingIndexStart;
+    }
+
+    public boolean isComposingTextExist() {
+        if (this.mComposingIndexStart >= 0 && this.mComposingIndexEnd >= 0
+                && this.mComposingIndexStart < mComposingIndexEnd
+                && this.mComposingIndexStart <= this.mCursorPosition
+                && this.mCursorPosition <= this.mComposingIndexEnd ) {
+            return true;
+        }
+        return false;
+    }
+
 
     //////////////////////   Line & Keyword  //////////////////////
 
@@ -292,7 +327,7 @@ public class Document {
     /**
      * There is a safe method to move cursor. The offset will be [0, mText.length()]
      * If cursor position is not changed, we will do nothing.
-     * */
+     */
     public void moveCursor(int offset, boolean isRelative) {
         int absOffset;
         if (isRelative) {
@@ -309,8 +344,12 @@ public class Document {
         if (needUpdate) {
             setCursorPosition(absOffset);
 
+            if (mComposingIndexStart > absOffset || absOffset < mComposingIndexEnd) {
+                setComposingRegion(0, 0);
+            }
+
             if (mCursorMoveCallback != null) {
-                mCursorMoveCallback.onCursorMoved(offset, offset);
+                mCursorMoveCallback.onCursorMoved(absOffset, absOffset);
             }
         }
     }

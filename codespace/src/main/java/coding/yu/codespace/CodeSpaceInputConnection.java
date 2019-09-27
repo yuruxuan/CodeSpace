@@ -1,8 +1,10 @@
 package coding.yu.codespace;
 
+import android.text.Editable;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.inputmethod.BaseInputConnection;
+import android.view.inputmethod.CompletionInfo;
 
 /**
  * Created by yu on 9/18/2019.
@@ -14,8 +16,6 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
     private CodeSpace mCodeSpace;
     private Document mDocument;
 
-    private int mComposingTextLength;
-
     public CodeSpaceInputConnection(CodeSpace targetView) {
         super(targetView, true);
         this.mCodeSpace = targetView;
@@ -23,14 +23,22 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
     }
 
     @Override
+    public boolean setComposingRegion(int start, int end) {
+        Log.d("Yu", "setComposingRegion:" + start + " " + end);
+        mDocument.setComposingRegion(start, end);
+        mCodeSpace.invalidate();
+        return true;
+    }
+
+    @Override
     public boolean beginBatchEdit() {
-        Log.d("Yu", "beginBatchEdit");
+//        Log.d("Yu", "beginBatchEdit");
         return super.beginBatchEdit();
     }
 
     @Override
     public boolean endBatchEdit() {
-        Log.d("Yu", "endBatchEdit");
+//        Log.d("Yu", "endBatchEdit");
         return super.endBatchEdit();
     }
 
@@ -39,14 +47,13 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
         Log.d("Yu", "commitText:" + text + " " + newCursorPosition);
 
         mDocument.replace(
-                mDocument.getCursorPosition() - mComposingTextLength,
-                mDocument.getCursorPosition(),
+                mDocument.getComposingIndexStart(),
+                mDocument.getComposingIndexEnd(),
                 text.toString());
 
-        mComposingTextLength = 0;
-
         if (newCursorPosition == 1) {
-            mDocument.moveCursor(mDocument.getCursorPosition() + text.length(), false);
+            mDocument.moveCursor(mDocument.getComposingIndexStart() + text.length(), false);
+            mDocument.setComposingRegion(mDocument.getCursorPosition(), mDocument.getCursorPosition());
         } else {
             Log.e(TAG, "commitText newCursorPosition != 1, need check!");
         }
@@ -54,8 +61,13 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
         Log.e("Yu", "Cursor pos:" + mDocument.getCursorPosition());
 
         mCodeSpace.invalidate();
-
         return true;
+    }
+
+    @Override
+    public boolean commitCompletion(CompletionInfo text) {
+        Log.v("Yu", "commitCompletion " + text);
+        return super.commitCompletion(text);
     }
 
     @Override
@@ -82,19 +94,15 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
     public boolean setComposingText(CharSequence text, int newCursorPosition) {
         Log.d("Yu", "setComposingText:" + text + " " + newCursorPosition);
 
-        mDocument.replace(
-                mDocument.getCursorPosition() - mComposingTextLength,
-                mDocument.getCursorPosition(),
-                text.toString()
-                );
+        int start = mDocument.getComposingIndexStart();
+        mDocument.replace(start, mDocument.getComposingIndexEnd(), text.toString());
+        mDocument.setComposingRegion(start, mDocument.getComposingIndexStart() + text.length());
 
         if (newCursorPosition == 1) {
-            mDocument.moveCursor(mDocument.getCursorPosition() + text.length() - mComposingTextLength, false);
+            mDocument.moveCursor(start + text.length(), false);
         } else {
             Log.e(TAG, "setComposingText newCursorPosition != 1, need check!");
         }
-
-        mComposingTextLength = text.length();
 
         Log.e("Yu", "Cursor pos:" + mDocument.getCursorPosition());
 
@@ -117,9 +125,16 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
     }
 
     @Override
+    public boolean deleteSurroundingTextInCodePoints(int beforeLength, int afterLength) {
+        Log.d("Yu", "deleteSurroundingTextInCodePoints " + beforeLength + " " + afterLength);
+        return super.deleteSurroundingTextInCodePoints(beforeLength, afterLength);
+    }
+
+    @Override
     public boolean finishComposingText() {
         Log.d("Yu", "finishComposingText");
-        mComposingTextLength = 0;
+        mDocument.setComposingRegion(0, 0);
+        mCodeSpace.invalidate();
         return true;
     }
 
@@ -139,10 +154,10 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
 
     @Override
     public CharSequence getTextAfterCursor(int length, int flags) {
-        String s = mDocument.toString();
-        int end = Math.min(mDocument.toString().length(), mDocument.getCursorPosition() + 1);
-        String logStr = mDocument.toString().substring(mDocument.getCursorPosition(), end);
-        Log.d("Yu", "getTextAfterCursor:" + logStr + " " + length);
+        String str = mDocument.toString();
+        int end = Math.min(str.length(), mDocument.getCursorPosition() + length);
+        String s = str.substring(mDocument.getCursorPosition(), end);
+        Log.d("Yu", "getTextAfterCursor:" + s + " " + length);
         return s;
     }
 
