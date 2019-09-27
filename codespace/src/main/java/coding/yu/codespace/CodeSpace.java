@@ -20,6 +20,7 @@ import androidx.annotation.Nullable;
 
 import coding.yu.codespace.highlight.ColorStyle;
 import coding.yu.codespace.highlight.LightColor;
+import coding.yu.codespace.ime.IMEHelper;
 import coding.yu.codespace.lex.TokenType;
 import coding.yu.codespace.touch.TouchGestureListener;
 
@@ -134,6 +135,7 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
      */
     @Override
     public void onCursorMoved(int start, int end) {
+        Log.e("Yu", "notify onCursorMoved " + start + " " + end);
         mInputMethodManager.updateSelection(this, start, end, -1, -1);
         invalidate();
     }
@@ -191,8 +193,6 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
             offset += 1;
         }
 
-        Log.e("Yu", "getOffsetNearXLineIndex: lineIndex：" + lineIndex + " " + offset);
-
         return offset;
     }
 
@@ -233,8 +233,6 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
 
     private void realDraw(Canvas canvas) {
         int cursorLineIndex = mDocument.findLineForDraw(mDocument.getCursorPosition());
-
-        Log.e("Yu", "needLineBgIndex:" + cursorLineIndex);
 
         mDocument.resetLastToken();
         for (int i = 0; i < mDocument.getLineCountForDraw(); i++) {

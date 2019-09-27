@@ -84,11 +84,6 @@ public class Document {
         analyze(null);
     }
 
-    public void deleteLast() {
-        mText.deleteCharAt(mText.length() - 1);
-        analyze(null);
-    }
-
     public void delete(int start, int end) {
         mText.delete(start, end);
         analyze(null);
@@ -103,7 +98,6 @@ public class Document {
     //////////////////////   Composing Text  //////////////////////
 
     public void setComposingRegion(int start, int end) {
-        Log.e("Yu", "setComposingRegion " + start + " " + end);
         this.mComposingIndexStart = start;
         this.mComposingIndexEnd = end;
     }
@@ -124,7 +118,7 @@ public class Document {
         if (this.mComposingIndexStart >= 0 && this.mComposingIndexEnd >= 0
                 && this.mComposingIndexStart < mComposingIndexEnd
                 && this.mComposingIndexStart <= this.mCursorPosition
-                && this.mCursorPosition <= this.mComposingIndexEnd ) {
+                && this.mCursorPosition <= this.mComposingIndexEnd) {
             return true;
         }
         return false;
@@ -190,7 +184,6 @@ public class Document {
             mLines.add(mText.substring(from, to));
         }
 
-        Log.e("Yu", "mLines:" + mLines.size() + " " + mLines.toString());
     }
 
     private void analyzeKeyword() {
@@ -344,10 +337,6 @@ public class Document {
         if (needUpdate) {
             setCursorPosition(absOffset);
 
-            if (mComposingIndexStart > absOffset || absOffset < mComposingIndexEnd) {
-                setComposingRegion(0, 0);
-            }
-
             if (mCursorMoveCallback != null) {
                 mCursorMoveCallback.onCursorMoved(absOffset, absOffset);
             }
@@ -389,7 +378,7 @@ public class Document {
      */
     public void handleKeyEvent(KeyEvent event) {
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
-            if (handleDirectionControl(event)) {
+            if (handleControlKey(event)) {
                 // Do nothing...
             } else {
                 char ch = KeyCodeConverter.convert(event.getKeyCode());
@@ -401,7 +390,7 @@ public class Document {
         }
     }
 
-    private boolean handleDirectionControl(KeyEvent event) {
+    private boolean handleControlKey(KeyEvent event) {
         if (event.getKeyCode() == KeyEvent.KEYCODE_DPAD_DOWN) {
             moveCursorDown();
             return true;
@@ -419,6 +408,14 @@ public class Document {
 
         if (event.getKeyCode() == KeyEvent.KEYCODE_DPAD_RIGHT) {
             moveCursorRight();
+            return true;
+        }
+
+        if (event.getKeyCode() == KeyEvent.KEYCODE_DEL) {
+            if (mCursorPosition - 1 >= 0) {
+                delete(mCursorPosition - 1, mCursorPosition);
+                moveCursorLeft();
+            }
             return true;
         }
 
