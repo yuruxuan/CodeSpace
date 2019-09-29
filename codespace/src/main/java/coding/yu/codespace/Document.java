@@ -376,18 +376,31 @@ public class Document {
      * 1.Input Method
      * 2.Framework > Activity > View
      */
-    public void handleKeyEvent(KeyEvent event) {
+    public boolean handleKeyEvent(KeyEvent event) {
+        Log.e("Yu", "handleKeyEvent " + KeyEvent.keyCodeToString(event.getKeyCode()));
+
+        if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
+            return false;
+        }
+
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
+            char ch = 0;
             if (handleControlKey(event)) {
                 // Do nothing...
-            } else {
-                char ch = KeyCodeConverter.convert(event.getKeyCode());
-                if (ch != 0) {
-                    insert(getCursorPosition(), ch);
-                    moveCursorRight();
-                }
+            } else if ((ch = KeyCodeConverter.convertOther(event.getKeyCode())) != 0) {
+                insert(getCursorPosition(), ch);
+                moveCursorRight();
+            } else if ((ch = KeyCodeConverter.convertLetter(event.getKeyCode(),
+                    event.isCapsLockOn() || event.isShiftPressed())) != 0) {
+                insert(getCursorPosition(), ch);
+                moveCursorRight();
+            } else if ((ch = KeyCodeConverter.convertNumSign(event.getKeyCode(),
+                    event.isShiftPressed())) != 0) {
+                insert(getCursorPosition(), ch);
+                moveCursorRight();
             }
         }
+        return true;
     }
 
     private boolean handleControlKey(KeyEvent event) {

@@ -34,7 +34,7 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
     private static final int DEFAULT_COMPOSING_UNDERLINE_WIDTH_DP = 1;
     private static final int COMPOSING_UNDERLINE_TEXT_SPACE_PX = 1;
 
-    private InputConnection mInputConnection;
+    private CodeSpaceInputConnection mInputConnection;
     private GestureDetector mGestureDetector;
 
     private Document mDocument = new Document();
@@ -113,7 +113,7 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
         if (mInputConnection == null) {
             mInputConnection = new CodeSpaceInputConnection(this);
         }
-
+        mInputConnection.setCurrentIME(IMEHelper.getDefaultInputMethodPkgName(getContext()));
         return mInputConnection;
     }
 
@@ -348,10 +348,12 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
                 mCursorPaint);
     }
 
+
+    //////////////////////   KeyEvent  //////////////////////
+
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        mDocument.handleKeyEvent(event);
-        return true;
+        return mDocument.handleKeyEvent(event);
     }
 
 

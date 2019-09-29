@@ -1,9 +1,7 @@
 package coding.yu.codespace;
 
 import android.os.Bundle;
-import android.text.Editable;
 import android.text.TextUtils;
-import android.text.style.UnderlineSpan;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.inputmethod.BaseInputConnection;
@@ -19,11 +17,17 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
 
     private CodeSpace mCodeSpace;
     private Document mDocument;
+    private String mCurrentIME;
 
     public CodeSpaceInputConnection(CodeSpace targetView) {
         super(targetView, true);
         this.mCodeSpace = targetView;
         this.mDocument = targetView.getDocument();
+    }
+
+    public void setCurrentIME(String pkg) {
+        Log.i("Yu", "Current IME:" + pkg);
+        this.mCurrentIME = pkg;
     }
 
     @Override
@@ -122,9 +126,11 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
     public boolean sendKeyEvent(KeyEvent event) {
         Log.d("Yu", "sendKeyEvent:" + event.toString());
 
-        mDocument.handleKeyEvent(event);
-        mCodeSpace.invalidate();
-        return true;
+        boolean result = mDocument.handleKeyEvent(event);
+        if (result) {
+            mCodeSpace.invalidate();
+        }
+        return result;
     }
 
     @Override
@@ -165,8 +171,6 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
                 end--;
             }
         }
-
-        //先使用 最后更新
 
         mDocument.replace(start, end, text.toString());
         mDocument.setComposingRegion(start, start + text.length());
@@ -217,21 +221,28 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
     // In some case, the IME can not provide the correct composing region by getTextBeforeCursor()
     // and getTextAfterCursor(), such as sogou pinyin IME. So I decide to return a empty
     // string, and the IME will not incorrectly invoke setComposingText().
+    // BUT Google IME is perfect.
     @Override
     public CharSequence getTextBeforeCursor(int length, int flags) {
-//        int start = Math.max(0, mDocument.getCursorPosition() - length);
-//        String s = mDocument.toString().substring(start, mDocument.getCursorPosition());
-//        return s;
-        return "";
+        if (isStupidIME(mCurrentIME)) {
+            return "";
+        }
+        int start = Math.max(0, mDocument.getCursorPosition() - length);
+        String s = mDocument.toString().substring(start, mDocument.getCursorPosition());
+        Log.e("Yu", "getTextBeforeCursor return:" + s);
+        return s;
     }
 
     @Override
     public CharSequence getTextAfterCursor(int length, int flags) {
-//        String str = mDocument.toString();
-//        int end = Math.min(str.length(), mDocument.getCursorPosition() + length);
-//        String s = str.substring(mDocument.getCursorPosition(), end);
-//        return s;
-        return "";
+        if (isStupidIME(mCurrentIME)) {
+            return "";
+        }
+        String str = mDocument.toString();
+        int end = Math.min(str.length(), mDocument.getCursorPosition() + length);
+        String s = str.substring(mDocument.getCursorPosition(), end);
+        Log.e("Yu", "getTextAfterCursor return:" + s);
+        return s;
     }
 
     @Override
@@ -246,5 +257,10 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
         return super.reportFullscreenMode(enabled);
     }
 
-
+    private boolean isStupidIME(String pkg) {
+        if (TextUtils.equals("com.sohu.inputmethod.sogou", pkg)) {
+            return true;
+        }
+        return false;
+    }
 }
