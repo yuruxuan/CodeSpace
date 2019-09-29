@@ -8,6 +8,7 @@ import android.util.Log;
 import android.view.KeyEvent;
 import android.view.inputmethod.BaseInputConnection;
 import android.view.inputmethod.CompletionInfo;
+import android.view.inputmethod.InputContentInfo;
 
 /**
  * Created by yu on 9/18/2019.
@@ -31,6 +32,12 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
         mDocument.setComposingRegion(start, end);
         mCodeSpace.invalidate();
         return true;
+    }
+
+    @Override
+    public boolean commitContent(InputContentInfo inputContentInfo, int flags, Bundle opts) {
+        Log.d("Yu", "commitContent:" + inputContentInfo + " " + flags + " " + opts);
+        return super.commitContent(inputContentInfo, flags, opts);
     }
 
     @Override
@@ -123,7 +130,6 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
     @Override
     public CharSequence getSelectedText(int flags) {
         Log.d("Yu", "getSelectedText:" + flags);
-        mDocument.setComposingRegion(mDocument.getCursorPosition(), mDocument.getCursorPosition());
         return null;
     }
 
@@ -133,13 +139,14 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
 
         if (TextUtils.isEmpty(text)) {
             Log.w(TAG, "setComposingText text is empty, wtf...");
+            mDocument.setComposingRegion(mDocument.getCursorPosition(), mDocument.getCursorPosition());
+            mCodeSpace.invalidate();
             return true;
         }
 
         if (newCursorPosition != 1) {
             Log.w(TAG, "setComposingText newCursorPosition != 1, need check!");
-            int position = mDocument.getCursorPosition();
-            mDocument.setComposingRegion(position, position);
+            mDocument.setComposingRegion(mDocument.getCursorPosition(), mDocument.getCursorPosition());
             mCodeSpace.invalidate();
             return true;
         }
@@ -206,21 +213,25 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
         return super.getCursorCapsMode(reqModes);
     }
 
+    // This is not a good solution.
+    // In some case, the IME can not provide the correct composing region by getTextBeforeCursor()
+    // and getTextAfterCursor(), such as sogou pinyin IME. So I decide to return a empty
+    // string, and the IME will not incorrectly invoke setComposingText().
     @Override
     public CharSequence getTextBeforeCursor(int length, int flags) {
-        int start = Math.max(0, mDocument.getCursorPosition() - length);
-        String s = mDocument.toString().substring(start, mDocument.getCursorPosition());
-//        Log.d("Yu", "getTextBeforeCursor:" + s + " " + length);
-        return s;
+//        int start = Math.max(0, mDocument.getCursorPosition() - length);
+//        String s = mDocument.toString().substring(start, mDocument.getCursorPosition());
+//        return s;
+        return "";
     }
 
     @Override
     public CharSequence getTextAfterCursor(int length, int flags) {
-        String str = mDocument.toString();
-        int end = Math.min(str.length(), mDocument.getCursorPosition() + length);
-        String s = str.substring(mDocument.getCursorPosition(), end);
-//        Log.d("Yu", "getTextAfterCursor:" + s + " " + length);
-        return s;
+//        String str = mDocument.toString();
+//        int end = Math.min(str.length(), mDocument.getCursorPosition() + length);
+//        String s = str.substring(mDocument.getCursorPosition(), end);
+//        return s;
+        return "";
     }
 
     @Override
