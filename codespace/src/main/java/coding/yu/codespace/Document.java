@@ -27,6 +27,9 @@ public class Document {
 
     private int mCursorPosition;
 
+    private int mSelectionStart;
+    private int mSelectionEnd;
+
     private int mComposingIndexStart;
     private int mComposingIndexEnd;
 
@@ -305,14 +308,6 @@ public class Document {
         return mCursorPosition;
     }
 
-    public int getSelectionStart() {
-        return -1;
-    }
-
-    public int getSelectionEnd() {
-        return -1;
-    }
-
     private void setCursorPosition(int position) {
         this.mCursorPosition = position;
     }
@@ -366,6 +361,37 @@ public class Document {
             int offset = mOffsetMeasure.getNextLineRelativeOffset();
             moveCursor(offset, false);
         }
+    }
+
+    public boolean hasSelection() {
+        if (mSelectionStart >= 0 && mComposingIndexEnd >= 0
+                && mSelectionStart < mSelectionEnd) {
+            return true;
+        }
+        return false;
+    }
+
+    public void setSelection(int start, int end) {
+        setSelection(start, end, true);
+    }
+
+    public void setSelection(int start, int end, boolean needNotify) {
+        mSelectionStart = Math.min(start, mText.length());
+        mSelectionStart = Math.max(mSelectionStart, 0);
+        mSelectionEnd = Math.min(end, mText.length());
+        mSelectionEnd = Math.max(mSelectionEnd, 0);
+
+        if (mCursorMoveCallback != null && needNotify) {
+            mCursorMoveCallback.onCursorMoved(mSelectionStart, mSelectionEnd);
+        }
+    }
+
+    public int getSelectionStart() {
+        return mSelectionStart;
+    }
+
+    public int getSelectionEnd() {
+        return mSelectionEnd;
     }
 
 

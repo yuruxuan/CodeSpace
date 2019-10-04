@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.text.InputType;
 import android.util.AttributeSet;
@@ -42,12 +43,14 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
     private ActionCallbackCompat mActionCallback = new ActionCallbackCompat();
     private ActionMode mActionMode;
 
+    // Contain max selection region and two handle.
+    private Rect mSelectionRegion = new Rect();
+
     private Paint mLineBackgroundPaint = new Paint();
     private Paint mSelectPaint = new Paint();
     private Paint mTextPaint = new Paint();
     private Paint mCursorPaint = new Paint();
 
-    private int mComposingUnderlineWidth;
     private int mSpaceWidth;
 
     private int mCursorCenterX;
@@ -83,6 +86,7 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
         mTextPaint.setStrokeWidth(dp2px(DEFAULT_COMPOSING_UNDERLINE_WIDTH_DP));
 
         mLineBackgroundPaint.setColor(0x33ff0000);
+        mSelectPaint.setColor(0x9900ff00);
 
         mCursorPaint.setColor(0x9900ff00);
 
@@ -197,6 +201,12 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
         return offset;
     }
 
+    public int[] getWordNearXY(int x, int y) {
+        int position = getOffsetNearXY(x, y);
+
+        return new int[]{position, mDocument.length()};
+    }
+
     private int getRowHeight() {
         Paint.FontMetricsInt metrics = mTextPaint.getFontMetricsInt();
         return (metrics.bottom - metrics.top);
@@ -232,22 +242,31 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
         realDraw(canvas);
     }
 
+    //TODO:Analyze each line first, and draw every char.
     private void realDraw(Canvas canvas) {
         int cursorLineIndex = mDocument.findLineForDraw(mDocument.getCursorPosition());
+        boolean hasSelection = mDocument.hasSelection();
 
         mDocument.resetLastToken();
+
+        if (hasSelection) {
+            drawSelection(canvas);
+        }
+
         for (int i = 0; i < mDocument.getLineCountForDraw(); i++) {
-            if (i == cursorLineIndex) {
+            if (i == cursorLineIndex && !hasSelection) {
                 drawLineBackground(canvas, cursorLineIndex);
             }
-            drawSelection(canvas);
+
             drawLineText(canvas, i);
 
             if (i == cursorLineIndex) {
                 if (mDocument.isComposingTextExist()) {
                     drawComposingTextUnderline(canvas, cursorLineIndex);
                 }
-                drawCursor(canvas, cursorLineIndex);
+                if (!hasSelection) {
+                    drawCursor(canvas, cursorLineIndex);
+                }
             }
         }
     }
@@ -321,7 +340,80 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
     }
 
     private void drawSelection(Canvas canvas) {
+        int startSelect = mDocument.getSelectionStart();
+        int endSelect = mDocument.getSelectionEnd();
 
+        int startLine = mDocument.findLineForDraw(startSelect);
+        int endLine = mDocument.findLineForDraw(endSelect);
+
+        Log.e("Yu", "line:" + startLine + ":" + endLine);
+
+        if (startLine == endLine) {
+            int count = 0;
+            for (int i = 0; i < startLine; i++) {
+                count += mDocument.getLineText(i).length();
+            }
+            int startX = 0;
+            for (int i = count; i < mDocument.getSelectionStart(); i++) {
+                char c = mDocument.toString().charAt(i);
+                startX = startX + getCharWidth(c);
+            }
+            int endX = startX;
+            for (int i = mDocument.getSelectionStart(); i < mDocument.getSelectionEnd(); i++) {
+                char c = mDocument.toString().charAt(i);
+                endX = endX + getCharWidth(c);
+            }
+
+            canvas.drawRect(startX,
+                    startLine * getRowHeight(),
+                    endX,
+                    (startLine + 1) * getRowHeight(),
+                    mSelectPaint);
+
+        } else {
+            // 1.Draw first select line background.
+            int count = 0;
+            for (int i = 0; i < startLine; i++) {
+                count += mDocument.getLineText(i).length();
+            }
+            int startX = 0;
+            for (int i = count; i < mDocument.getSelectionStart(); i++) {
+                char c = mDocument.toString().charAt(i);
+                startX = startX + getCharWidth(c);
+            }
+
+            canvas.drawRect(startX,
+                    startLine * getRowHeight(),
+                    Integer.MAX_VALUE,
+                    (startLine + 1) * getRowHeight(),
+                    mSelectPaint);
+
+            // 2.Draw last select line background.
+            count = 0;
+            for (int i = 0; i < endLine; i++) {
+                count += mDocument.getLineText(i).length();
+            }
+            int endX = 0;
+            for (int i = count; i < mDocument.getSelectionEnd(); i++) {
+                char c = mDocument.toString().charAt(i);
+                endX = endX + getCharWidth(c);
+            }
+
+            canvas.drawRect(0,
+                    endLine * getRowHeight(),
+                    endX,
+                    (endLine + 1) * getRowHeight(),
+                    mSelectPaint);
+
+            // 3.Draw middle select line background.
+            if (endLine - startLine > 1) {
+                canvas.drawRect(0,
+                        (startLine + 1) * getRowHeight(),
+                        Integer.MAX_VALUE,
+                        endLine * getRowHeight(),
+                        mSelectPaint);
+            }
+        }
     }
 
     private void drawCursor(Canvas canvas, int lineIndex) {
@@ -363,6 +455,7 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
     public void onSingleTapUp(int x, int y) {
         int offset = getOffsetNearXY(x, y);
         mDocument.moveCursor(offset, false);
+        mDocument.setSelection(offset, offset);
 
         if (mActionMode != null) {
             mActionMode.finish();
@@ -370,6 +463,9 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
     }
 
     public void onLongPress(int x, int y) {
+        int[] range = getWordNearXY(x, y);
+        mDocument.setSelection(range[0], range[1]);
+
         mActionMode = mActionCallback.startActionMode(this);
     }
 
