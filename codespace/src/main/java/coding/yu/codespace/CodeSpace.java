@@ -8,6 +8,7 @@ import android.graphics.Typeface;
 import android.text.InputType;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.view.ActionMode;
 import android.view.GestureDetector;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
@@ -15,8 +16,6 @@ import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
-
-import androidx.annotation.Nullable;
 
 import coding.yu.codespace.highlight.ColorStyle;
 import coding.yu.codespace.highlight.LightColor;
@@ -38,6 +37,10 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
     private GestureDetector mGestureDetector;
 
     private Document mDocument = new Document();
+    private ColorStyle mColorStyle = new LightColor();
+
+    private ActionCallbackCompat mActionCallback = new ActionCallbackCompat();
+    private ActionMode mActionMode;
 
     private Paint mLineBackgroundPaint = new Paint();
     private Paint mSelectPaint = new Paint();
@@ -50,8 +53,6 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
     private int mCursorCenterX;
     private int mCursorCenterY;
 
-    private ColorStyle mColorStyle = new LightColor();
-
     private InputMethodManager mInputMethodManager;
 
     public CodeSpace(Context context) {
@@ -59,12 +60,12 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
         init();
     }
 
-    public CodeSpace(Context context, @Nullable AttributeSet attrs) {
+    public CodeSpace(Context context, AttributeSet attrs) {
         super(context, attrs);
         init();
     }
 
-    public CodeSpace(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
+    public CodeSpace(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         init();
     }
@@ -362,6 +363,14 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
     public void onSingleTapUp(int x, int y) {
         int offset = getOffsetNearXY(x, y);
         mDocument.moveCursor(offset, false);
+
+        if (mActionMode != null) {
+            mActionMode.finish();
+        }
+    }
+
+    public void onLongPress(int x, int y) {
+        mActionMode = mActionCallback.startActionMode(this);
     }
 
 

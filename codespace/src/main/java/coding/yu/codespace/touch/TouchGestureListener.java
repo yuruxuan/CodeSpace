@@ -42,7 +42,7 @@ public class TouchGestureListener extends GestureDetector.SimpleOnGestureListene
 
     @Override
     public void onLongPress(MotionEvent e) {
-        super.onLongPress(e);
+        mCodeSpace.onLongPress((int)e.getX(), (int) e.getY());
     }
 
     @Override
