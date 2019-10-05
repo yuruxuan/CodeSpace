@@ -2,6 +2,7 @@ package coding.yu.codespace.touch;
 
 import android.content.Context;
 import android.util.Log;
+import android.view.GestureDetector;
 import android.view.MotionEvent;
 
 import coding.yu.codespace.CodeSpace;
@@ -74,12 +75,6 @@ public class TouchGestureListener extends GestureDetector.SimpleOnGestureListene
             mCodeSpace.scrollTo(mCodeSpace.getScrollX(), targetY);
         }
         return true;
-    }
-
-    @Override
-    public boolean onScrollFinish(MotionEvent e) {
-
-        return super.onScrollFinish(e);
     }
 
     @Override
