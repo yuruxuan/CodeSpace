@@ -15,9 +15,6 @@ public class TouchGestureListener extends GestureDetector.SimpleOnGestureListene
 
     private CodeSpace mCodeSpace;
 
-    private boolean isScrollingX;
-    private boolean isScrollingY;
-
     public static GestureDetector setup(CodeSpace codeSpace) {
         TouchGestureListener listener = new TouchGestureListener(codeSpace);
         GestureDetector gestureDetector = new GestureDetector(codeSpace.getContext(), listener);
@@ -33,8 +30,6 @@ public class TouchGestureListener extends GestureDetector.SimpleOnGestureListene
     @Override
     public boolean onDown(MotionEvent e) {
         Log.e("Yu", "onDown:" + e.toString());
-        isScrollingX = false;
-        isScrollingY = false;
         return true;
     }
 
@@ -57,23 +52,11 @@ public class TouchGestureListener extends GestureDetector.SimpleOnGestureListene
         int dX = (int) distanceX;
         int dY = (int) distanceY;
 
-        if (!isScrollingX && !isScrollingY) {
-            if (Math.abs(dX) > Math.abs(dY)) {
-                isScrollingX = true;
-            } else {
-                isScrollingY = true;
-            }
-        }
-        Log.e("Yu", "onScroll: " + isScrollingX + " " + isScrollingY);
         int targetX = Math.max(0, mCodeSpace.getScrollX() + dX);
         int targetY = Math.max(0, mCodeSpace.getScrollY() + dY);
 
-        if (isScrollingX) {
-            mCodeSpace.scrollTo(targetX, mCodeSpace.getScrollY());
-        }
-        if (isScrollingY){
-            mCodeSpace.scrollTo(mCodeSpace.getScrollX(), targetY);
-        }
+        mCodeSpace.scrollTo(targetX, targetY);
+
         return true;
     }
 
