@@ -2,7 +2,6 @@ package coding.yu.codespace.touch;
 
 import android.content.Context;
 import android.util.Log;
-import android.view.GestureDetector;
 import android.view.MotionEvent;
 
 import coding.yu.codespace.CodeSpace;
@@ -14,6 +13,9 @@ import coding.yu.codespace.ime.IMEHelper;
 public class TouchGestureListener extends GestureDetector.SimpleOnGestureListener {
 
     private CodeSpace mCodeSpace;
+
+    private boolean isScrollingX;
+    private boolean isScrollingY;
 
     public static GestureDetector setup(CodeSpace codeSpace) {
         TouchGestureListener listener = new TouchGestureListener(codeSpace);
@@ -29,29 +31,60 @@ public class TouchGestureListener extends GestureDetector.SimpleOnGestureListene
 
     @Override
     public boolean onDown(MotionEvent e) {
+        Log.e("Yu", "onDown:" + e.toString());
+        isScrollingX = false;
+        isScrollingY = false;
         return true;
     }
 
     @Override
     public boolean onSingleTapUp(MotionEvent e) {
+        Log.e("Yu", "onSingleTapUp:" + e.toString());
         IMEHelper.show(mCodeSpace);
-        mCodeSpace.onSingleTapUp((int)e.getX(), (int) e.getY());
+        mCodeSpace.onSingleTapUp((int) e.getX(), (int) e.getY());
 
         return true;
     }
 
     @Override
     public void onLongPress(MotionEvent e) {
-        mCodeSpace.onLongPress((int)e.getX(), (int) e.getY());
+        mCodeSpace.onLongPress((int) e.getX(), (int) e.getY());
     }
 
     @Override
     public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
-        return super.onScroll(e1, e2, distanceX, distanceY);
+        int dX = (int) distanceX;
+        int dY = (int) distanceY;
+
+        if (!isScrollingX && !isScrollingY) {
+            if (Math.abs(dX) > Math.abs(dY)) {
+                isScrollingX = true;
+            } else {
+                isScrollingY = true;
+            }
+        }
+        Log.e("Yu", "onScroll: " + isScrollingX + " " + isScrollingY);
+        int targetX = Math.max(0, mCodeSpace.getScrollX() + dX);
+        int targetY = Math.max(0, mCodeSpace.getScrollY() + dY);
+
+        if (isScrollingX) {
+            mCodeSpace.scrollTo(targetX, mCodeSpace.getScrollY());
+        }
+        if (isScrollingY){
+            mCodeSpace.scrollTo(mCodeSpace.getScrollX(), targetY);
+        }
+        return true;
+    }
+
+    @Override
+    public boolean onScrollFinish(MotionEvent e) {
+
+        return super.onScrollFinish(e);
     }
 
     @Override
     public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+        Log.e("Yu", "onFling:" + e2.toString());
         return super.onFling(e1, e2, velocityX, velocityY);
     }
 
@@ -72,11 +105,7 @@ public class TouchGestureListener extends GestureDetector.SimpleOnGestureListene
 
     @Override
     public boolean onSingleTapConfirmed(MotionEvent e) {
+        Log.e("Yu", "onSingleTapConfirmed:" + e.toString());
         return super.onSingleTapConfirmed(e);
-    }
-
-    @Override
-    public boolean onContextClick(MotionEvent e) {
-        return super.onContextClick(e);
     }
 }

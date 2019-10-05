@@ -10,7 +10,6 @@ import android.text.InputType;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.ActionMode;
-import android.view.GestureDetector;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
@@ -18,10 +17,11 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 
-import coding.yu.codespace.highlight.ColorStyle;
-import coding.yu.codespace.highlight.LightColor;
+import coding.yu.codespace.color.ColorStyle;
+import coding.yu.codespace.color.LightColor;
 import coding.yu.codespace.ime.IMEHelper;
 import coding.yu.codespace.lex.TokenType;
+import coding.yu.codespace.touch.GestureDetector;
 import coding.yu.codespace.touch.TouchGestureListener;
 
 /**

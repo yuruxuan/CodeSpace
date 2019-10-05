@@ -1,4 +1,4 @@
-package coding.yu.codespace.highlight;
+package coding.yu.codespace.color;
 
 /**
  * Created by yu on 9/24/2019.
