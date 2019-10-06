@@ -7,6 +7,7 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.text.InputType;
+import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.ActionMode;
@@ -27,7 +28,8 @@ import coding.yu.codespace.touch.TouchGestureListener;
 /**
  * Created by yu on 9/18/2019.
  */
-public class CodeSpace extends View implements Document.CursorMoveCallback, Document.OffsetMeasure {
+public class CodeSpace extends View implements Document.CursorMoveCallback, Document.OffsetMeasure,
+        Document.TextChangeListener {
 
     private static final int DEFAULT_TEXT_SIZE_SP = 16;
     private static final int DEFAULT_CURSOR_WIDTH_DP = 2;
@@ -55,6 +57,9 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
 
     private int mCursorCenterX;
     private int mCursorCenterY;
+
+    private int mLongestLineWidth = 0;
+    private int mContentHeight = 0;
 
     private InputMethodManager mInputMethodManager;
 
@@ -159,12 +164,23 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
         return getOffsetNearXY(x, y);
     }
 
+    @Override
+    public void onTextChanged(String before, String after) {
+
+    }
+
+    // We just follow cursor when user input something,
+    // don't care selection and others.
+    private void scrollFollowCursor() {
+
+    }
+
     private int getOffsetNearXY(int x, int y) {
         int rowHeight = getRowHeight();
 
         int targetLineIndex = mDocument.getLineCountForDraw() - 1;
         for (int i = 0; i <= targetLineIndex; i++) {
-            if (y < rowHeight * (i + 1)) {
+            if (y < rowHeight * (i + 1) + getPaddingTop()) {
                 targetLineIndex = i;
                 break;
             }
@@ -176,7 +192,7 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
     private int getOffsetNearXLineIndex(int x, int lineIndex) {
         String lineStr = mDocument.getLineText(lineIndex);
 
-        int tempX = 0;
+        int tempX = getPaddingStart();
         int targetLineOffset = 0;
         for (int i = 0; i < lineStr.length(); i++) {
             targetLineOffset = i;
@@ -233,6 +249,15 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
         return (int) mTextPaint.measureText(ca, 0, 1);
     }
 
+    // They are contain padding.
+    public int getLongestLineWidth() {
+        return mLongestLineWidth;
+    }
+
+    public int getContentHeight() {
+        return mContentHeight;
+    }
+
 
     //////////////////////   Draw everything  //////////////////////
 
@@ -253,7 +278,8 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
             drawSelection(canvas);
         }
 
-        for (int i = 0; i < mDocument.getLineCountForDraw(); i++) {
+        int lineCount = mDocument.getLineCountForDraw();
+        for (int i = 0; i < lineCount; i++) {
             if (i == cursorLineIndex && !hasSelection) {
                 drawLineBackground(canvas, cursorLineIndex);
             }
@@ -269,11 +295,13 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
                 }
             }
         }
+
+        mContentHeight = lineCount * getRowHeight() + getPaddingTop() + getPaddingEnd();
     }
 
     private void drawLineText(Canvas canvas, int lineIndex) {
-        int x = 0;
-        int y = getPaintBaseline(lineIndex);
+        int x = getPaddingStart();
+        int y = getPaintBaseline(lineIndex) + getPaddingTop();
         String lineStr = mDocument.getLineText(lineIndex);
         for (int i = 0; i < lineStr.length(); i++) {
             char c = lineStr.charAt(i);
@@ -281,6 +309,10 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
             drawChar(canvas, c, x, y, tokenType);
             int charWidth = getCharWidth(c);
             x = x + charWidth;
+        }
+
+        if (mLongestLineWidth < x + getPaddingEnd()) {
+            mLongestLineWidth = x + getPaddingEnd();
         }
     }
 
@@ -298,13 +330,13 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
             width += getCharWidth(c);
         }
 
-        int startX = 0;
+        int startX = getPaddingStart();
         for (int i = 0; i < currLineStart; i++) {
             char c = mDocument.getLineText(lineIndex).charAt(i);
             startX += getCharWidth(c);
         }
 
-        int baseline = getRowHeight() * (lineIndex + 1);
+        int baseline = getRowHeight() * (lineIndex + 1) + getPaddingTop();
         canvas.drawLine(
                 startX,
                 baseline + COMPOSING_UNDERLINE_TEXT_SPACE_PX,
@@ -333,9 +365,9 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
 
     private void drawLineBackground(Canvas canvas, int lineIndex) {
         canvas.drawRect(0,
-                lineIndex * getRowHeight(),
+                lineIndex * getRowHeight() + getPaddingTop(),
                 Integer.MAX_VALUE,
-                (lineIndex + 1) * getRowHeight(),
+                (lineIndex + 1) * getRowHeight() + getPaddingTop(),
                 mLineBackgroundPaint);
     }
 
@@ -365,9 +397,9 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
             }
 
             canvas.drawRect(startX,
-                    startLine * getRowHeight(),
-                    endX,
-                    (startLine + 1) * getRowHeight(),
+                    startLine * getRowHeight() + getPaddingTop(),
+                    endX + getPaddingStart(),
+                    (startLine + 1) * getRowHeight() + getPaddingTop(),
                     mSelectPaint);
 
         } else {
@@ -383,9 +415,9 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
             }
 
             canvas.drawRect(startX,
-                    startLine * getRowHeight(),
+                    startLine * getRowHeight() + getPaddingTop(),
                     Integer.MAX_VALUE,
-                    (startLine + 1) * getRowHeight(),
+                    (startLine + 1) * getRowHeight() + getPaddingTop(),
                     mSelectPaint);
 
             // 2.Draw last select line background.
@@ -400,17 +432,17 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
             }
 
             canvas.drawRect(0,
-                    endLine * getRowHeight(),
-                    endX,
-                    (endLine + 1) * getRowHeight(),
+                    endLine * getRowHeight() + getPaddingTop(),
+                    endX + getPaddingStart(),
+                    (endLine + 1) * getRowHeight() + getPaddingTop(),
                     mSelectPaint);
 
             // 3.Draw middle select line background.
             if (endLine - startLine > 1) {
                 canvas.drawRect(0,
-                        (startLine + 1) * getRowHeight(),
+                        (startLine + 1) * getRowHeight() + getPaddingTop(),
                         Integer.MAX_VALUE,
-                        endLine * getRowHeight(),
+                        endLine * getRowHeight() + getPaddingTop(),
                         mSelectPaint);
             }
         }
@@ -423,7 +455,7 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
         }
         int lineOffset = mDocument.getCursorPosition() - count;
 
-        int x = 0;
+        int x = getPaddingStart();
         String lineStr = mDocument.getLineText(lineIndex);
         for (int i = 0; i < lineOffset; i++) {
             char c = lineStr.charAt(i);
@@ -435,9 +467,9 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
 
         int cursorWidth = dp2px(DEFAULT_CURSOR_WIDTH_DP);
         canvas.drawRect(x - cursorWidth / 2,
-                lineIndex * getRowHeight(),
+                lineIndex * getRowHeight() + getPaddingTop(),
                 x + cursorWidth / 2,
-                (lineIndex + 1) * getRowHeight(),
+                (lineIndex + 1) * getRowHeight() + getPaddingTop(),
                 mCursorPaint);
     }
 

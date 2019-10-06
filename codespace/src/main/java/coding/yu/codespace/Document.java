@@ -473,4 +473,8 @@ public class Document {
 
         int getNextLineRelativeOffset();
     }
+
+    public interface TextChangeListener {
+        void onTextChanged(String before, String after);
+    }
 }

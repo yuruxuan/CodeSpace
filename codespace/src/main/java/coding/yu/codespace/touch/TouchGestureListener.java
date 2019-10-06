@@ -52,8 +52,14 @@ public class TouchGestureListener extends GestureDetector.SimpleOnGestureListene
         int dX = (int) distanceX;
         int dY = (int) distanceY;
 
+
+        int maxScrollX = Math.max(0, mCodeSpace.getLongestLineWidth() - mCodeSpace.getWidth());
         int targetX = Math.max(0, mCodeSpace.getScrollX() + dX);
+        targetX = Math.min(maxScrollX, targetX);
+
+        int maxScrollY = Math.max(0, mCodeSpace.getContentHeight() - mCodeSpace.getHeight());
         int targetY = Math.max(0, mCodeSpace.getScrollY() + dY);
+        targetY = Math.min(maxScrollY, targetY);
 
         mCodeSpace.scrollTo(targetX, targetY);
 
