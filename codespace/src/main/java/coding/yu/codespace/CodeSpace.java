@@ -154,14 +154,14 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
     public int getLastLineRelativeOffset() {
         int x = mCursorCenterX;
         int y = Math.max(0, mCursorCenterY - getRowHeight());
-        return getOffsetNearXY(x, y);
+        return getOffsetNearXY(x + getScrollX() - getPaddingStart(), y + getScrollY() - getPaddingTop());
     }
 
     @Override
     public int getNextLineRelativeOffset() {
         int x = mCursorCenterX;
         int y = Math.min(mDocument.getLineCountForDraw() * getRowHeight(), mCursorCenterY + getRowHeight());
-        return getOffsetNearXY(x, y);
+        return getOffsetNearXY(x + getScrollX() - getPaddingStart(), y + getScrollY() - getPaddingTop());
     }
 
     @Override
@@ -175,12 +175,13 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
 
     }
 
+    // (x, y) is base on first char rather than screen left-top corner.
     private int getOffsetNearXY(int x, int y) {
         int rowHeight = getRowHeight();
 
         int targetLineIndex = mDocument.getLineCountForDraw() - 1;
         for (int i = 0; i <= targetLineIndex; i++) {
-            if (y < rowHeight * (i + 1) + getPaddingTop()) {
+            if (y < rowHeight * (i + 1)) {
                 targetLineIndex = i;
                 break;
             }
@@ -192,7 +193,7 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
     private int getOffsetNearXLineIndex(int x, int lineIndex) {
         String lineStr = mDocument.getLineText(lineIndex);
 
-        int tempX = getPaddingStart();
+        int tempX = 0;
         int targetLineOffset = 0;
         for (int i = 0; i < lineStr.length(); i++) {
             targetLineOffset = i;
@@ -485,7 +486,7 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
     //////////////////////   Touch  //////////////////////
 
     public void onSingleTapUp(int x, int y) {
-        int offset = getOffsetNearXY(x, y);
+        int offset = getOffsetNearXY(x + getScrollX() - getPaddingStart(), y + getScrollY() - getPaddingTop());
         mDocument.moveCursor(offset, false);
         mDocument.setSelection(offset, offset);
 
@@ -495,7 +496,7 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
     }
 
     public void onLongPress(int x, int y) {
-        int[] range = getWordNearXY(x, y);
+        int[] range = getWordNearXY(x + getScrollX() - getPaddingStart(), y + getScrollY() - getPaddingTop());
         mDocument.setSelection(range[0], range[1]);
 
         mActionMode = mActionCallback.startActionMode(this);
