@@ -7,7 +7,6 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.text.InputType;
-import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.ActionMode;
@@ -28,7 +27,7 @@ import coding.yu.codespace.touch.TouchGestureListener;
 /**
  * Created by yu on 9/18/2019.
  */
-public class CodeSpace extends View implements Document.CursorMoveCallback, Document.OffsetMeasure,
+public class CodeSpace extends View implements Document.SelectionChangedCallback, Document.OffsetMeasure,
         Document.TextChangeListener {
 
     private static final int DEFAULT_TEXT_SIZE_SP = 16;
@@ -118,7 +117,6 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
         outAttrs.inputType = InputType.TYPE_CLASS_TEXT
                 | InputType.TYPE_TEXT_FLAG_MULTI_LINE;
         outAttrs.imeOptions = EditorInfo.IME_FLAG_NO_ENTER_ACTION
-                | EditorInfo.IME_ACTION_DONE
                 | EditorInfo.IME_FLAG_NO_EXTRACT_UI;
         if (mInputConnection == null) {
             mInputConnection = new CodeSpaceInputConnection(this);
@@ -144,9 +142,9 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
      * Editor authors, you need to call this method whenever the cursor moves in your editor.
      */
     @Override
-    public void onCursorMoved(int start, int end) {
-        Log.e("Yu", "notify onCursorMoved " + start + " " + end);
-        mInputMethodManager.updateSelection(this, start, end, -1, -1);
+    public void onSelectionChanged(int start, int end) {
+        Log.e("Yu", "notify onSelectionChanged " + start + " " + end);
+        mInputMethodManager.updateSelection(this, start, end, mDocument.getComposingIndexStart(), mDocument.getComposingIndexEnd());
         invalidate();
     }
 
@@ -274,6 +272,7 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
         boolean hasSelection = mDocument.hasSelection();
 
         mDocument.resetLastToken();
+        mLongestLineWidth = 0;
 
         if (hasSelection) {
             drawSelection(canvas);
@@ -323,16 +322,31 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
             sum += mDocument.getLineText(i).length();
         }
 
-        int currLineStart = mDocument.getComposingIndexStart() - sum;
+        int start = mDocument.getComposingIndexStart();
+        int end = mDocument.getComposingIndexEnd();
+        int cursorPos = mDocument.getCursorPosition();
+
+        if (cursorPos < start || cursorPos > end) {
+            return;
+        }
+
+        int currLineComposingStart = start - sum;
+        int currLineEnd = sum + mDocument.getLineText(lineIndex).length();
 
         int width = 0;
-        for (int i = 0; i < mDocument.getComposingLength(); i++) {
-            char c = mDocument.getLineText(lineIndex).charAt(currLineStart + i);
+        int temp = start;
+        while (temp >= currLineComposingStart && temp < currLineEnd && temp < end) {
+            char c = mDocument.toString().charAt(temp);
             width += getCharWidth(c);
+            temp++;
+        }
+
+        if (width <= 0) {
+            return;
         }
 
         int startX = getPaddingStart();
-        for (int i = 0; i < currLineStart; i++) {
+        for (int i = 0; i < currLineComposingStart; i++) {
             char c = mDocument.getLineText(lineIndex).charAt(i);
             startX += getCharWidth(c);
         }
@@ -378,8 +392,6 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
 
         int startLine = mDocument.findLineForDraw(startSelect);
         int endLine = mDocument.findLineForDraw(endSelect);
-
-        Log.e("Yu", "line:" + startLine + ":" + endLine);
 
         if (startLine == endLine) {
             int count = 0;
@@ -488,7 +500,6 @@ public class CodeSpace extends View implements Document.CursorMoveCallback, Docu
     public void onSingleTapUp(int x, int y) {
         int offset = getOffsetNearXY(x + getScrollX() - getPaddingStart(), y + getScrollY() - getPaddingTop());
         mDocument.moveCursor(offset, false);
-        mDocument.setSelection(offset, offset);
 
         if (mActionMode != null) {
             mActionMode.finish();

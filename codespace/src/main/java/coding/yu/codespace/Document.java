@@ -1,7 +1,10 @@
 package coding.yu.codespace;
 
+import android.text.Selection;
+import android.text.SpannableStringBuilder;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.inputmethod.BaseInputConnection;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,7 +20,7 @@ public class Document {
 
     private static final String TAG = "Document";
 
-    private StringBuilder mText = new StringBuilder();
+    private SpannableStringBuilder mText = new SpannableStringBuilder();
 
     private List<String> mLines = new ArrayList<>();
 
@@ -25,18 +28,10 @@ public class Document {
     private List<Token> mTokenList = new ArrayList<>();
     private Token mLastToken;
 
-    private int mCursorPosition;
+    private SelectionChangedCallback mSelectionChangedCallback;
 
-    private int mSelectionStart;
-    private int mSelectionEnd;
-
-    private int mComposingIndexStart;
-    private int mComposingIndexEnd;
-
-    private CursorMoveCallback mCursorMoveCallback;
-
-    public void setCursorMoveCallback(CursorMoveCallback callback) {
-        this.mCursorMoveCallback = callback;
+    public void setCursorMoveCallback(SelectionChangedCallback callback) {
+        this.mSelectionChangedCallback = callback;
     }
 
     private OffsetMeasure mOffsetMeasure;
@@ -49,13 +44,13 @@ public class Document {
 
     public void clear() {
         mText.delete(0, mText.length());
-        analyze(null);
+        analyze();
     }
 
     public void setText(String s) {
         mText.delete(0, mText.length());
         mText.append(s);
-        analyze(null);
+        analyze();
     }
 
     public int length() {
@@ -63,33 +58,33 @@ public class Document {
     }
 
     public void insert(int offset, char c) {
-        mText.insert(offset, c);
-        analyze(null);
+        mText.insert(offset, String.valueOf(c));
+        analyze();
     }
 
     public void insert(int offset, String s) {
         mText.insert(offset, s);
-        analyze(null);
+        analyze();
     }
 
     public void append(String s) {
         mText.append(s);
-        analyze(null);
+        analyze();
     }
 
     public void append(char c) {
         mText.append(c);
-        analyze(null);
+        analyze();
     }
 
     public void replace(int start, int end, String s) {
         mText.replace(start, end, s);
-        analyze(null);
+        analyze();
     }
 
     public void delete(int start, int end) {
         mText.delete(start, end);
-        analyze(null);
+        analyze();
     }
 
     @Override
@@ -97,31 +92,33 @@ public class Document {
         return mText.toString();
     }
 
+    public SpannableStringBuilder getText() {
+        return mText;
+    }
 
     //////////////////////   Composing Text  //////////////////////
 
-    public void setComposingRegion(int start, int end) {
-        this.mComposingIndexStart = start;
-        this.mComposingIndexEnd = end;
-    }
+//    public void setComposingRegion(int start, int end) {
+//        this.mComposingIndexStart = start;
+//        this.mComposingIndexEnd = end;
+//    }
 
     public int getComposingIndexStart() {
-        return this.mComposingIndexStart;
+        return BaseInputConnection.getComposingSpanStart(mText);
     }
 
     public int getComposingIndexEnd() {
-        return this.mComposingIndexEnd;
+        return BaseInputConnection.getComposingSpanEnd(mText);
     }
 
     public int getComposingLength() {
-        return this.mComposingIndexEnd - this.mComposingIndexStart;
+        return getComposingIndexEnd() - getComposingIndexStart();
     }
 
     public boolean isComposingTextExist() {
-        if (this.mComposingIndexStart >= 0 && this.mComposingIndexEnd >= 0
-                && this.mComposingIndexStart < mComposingIndexEnd
-                && this.mComposingIndexStart <= this.mCursorPosition
-                && this.mCursorPosition <= this.mComposingIndexEnd) {
+        int start = getComposingIndexStart();
+        int end = getComposingIndexEnd();
+        if (start >= 0 && end >= 0 && start < end) {
             return true;
         }
         return false;
@@ -162,7 +159,7 @@ public class Document {
         return mLines.size();
     }
 
-    private void analyze(String s) {
+    public void analyze() {
         analyzeLines();
         analyzeKeyword();
     }
@@ -178,13 +175,13 @@ public class Document {
         for (int i = 0; i < mText.length(); i++) {
             to++;
             if (mText.charAt(i) == '\n') {
-                mLines.add(mText.substring(from, to));
+                mLines.add(mText.subSequence(from, to).toString());
                 from = to;
             }
         }
 
         if (from != to) {
-            mLines.add(mText.substring(from, to));
+            mLines.add(mText.subSequence(from, to).toString());
         }
 
     }
@@ -305,11 +302,11 @@ public class Document {
      * 8
      */
     public int getCursorPosition() {
-        return mCursorPosition;
+        return Selection.getSelectionStart(mText);
     }
 
     private void setCursorPosition(int position) {
-        this.mCursorPosition = position;
+        Selection.setSelection(mText, position);
     }
 
     /**
@@ -327,14 +324,10 @@ public class Document {
             absOffset = Math.max(absOffset, 0);
         }
 
-        boolean needUpdate = absOffset != mCursorPosition;
+        setCursorPosition(absOffset);
 
-        if (needUpdate) {
-            setCursorPosition(absOffset);
-
-            if (mCursorMoveCallback != null) {
-                mCursorMoveCallback.onCursorMoved(absOffset, absOffset);
-            }
+        if (mSelectionChangedCallback != null) {
+            mSelectionChangedCallback.onSelectionChanged(absOffset, absOffset);
         }
     }
 
@@ -364,34 +357,33 @@ public class Document {
     }
 
     public boolean hasSelection() {
-        if (mSelectionStart >= 0 && mComposingIndexEnd >= 0
-                && mSelectionStart < mSelectionEnd) {
+        int start = Selection.getSelectionStart(mText);
+        int end = Selection.getSelectionEnd(mText);
+        if (start >= 0 && end >= 0 && start < end) {
             return true;
         }
         return false;
     }
 
     public void setSelection(int start, int end) {
-        setSelection(start, end, true);
-    }
+        start = Math.min(start, mText.length());
+        start = Math.max(start, 0);
+        end = Math.min(end, mText.length());
+        end = Math.max(end, 0);
 
-    public void setSelection(int start, int end, boolean needNotify) {
-        mSelectionStart = Math.min(start, mText.length());
-        mSelectionStart = Math.max(mSelectionStart, 0);
-        mSelectionEnd = Math.min(end, mText.length());
-        mSelectionEnd = Math.max(mSelectionEnd, 0);
+        Selection.setSelection(mText, start, end);
 
-        if (mCursorMoveCallback != null && needNotify) {
-            mCursorMoveCallback.onCursorMoved(mSelectionStart, mSelectionEnd);
+        if (mSelectionChangedCallback != null) {
+            mSelectionChangedCallback.onSelectionChanged(getSelectionStart(), getSelectionEnd());
         }
     }
 
     public int getSelectionStart() {
-        return mSelectionStart;
+        return Selection.getSelectionStart(mText);
     }
 
     public int getSelectionEnd() {
-        return mSelectionEnd;
+        return Selection.getSelectionEnd(mText);
     }
 
 
@@ -451,8 +443,8 @@ public class Document {
         }
 
         if (event.getKeyCode() == KeyEvent.KEYCODE_DEL) {
-            if (mCursorPosition - 1 >= 0) {
-                delete(mCursorPosition - 1, mCursorPosition);
+            if (getCursorPosition() - 1 >= 0) {
+                delete(getCursorPosition() - 1, getCursorPosition());
                 moveCursorLeft();
             }
             return true;
@@ -464,8 +456,8 @@ public class Document {
 
     //////////////////////   Interface   //////////////////////
 
-    public interface CursorMoveCallback {
-        void onCursorMoved(int start, int end);
+    public interface SelectionChangedCallback {
+        void onSelectionChanged(int start, int end);
     }
 
     public interface OffsetMeasure {
