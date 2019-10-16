@@ -14,7 +14,7 @@ import android.view.inputmethod.InputContentInfo;
  */
 public class CodeSpaceInputConnection extends BaseInputConnection {
 
-    private static final String TAG = "CodeSpaceInputConnectio";
+    private static final String TAG = "CodeSpaceInputConnection";
 
     private CodeSpace mCodeSpace;
     private Document mDocument;
@@ -78,7 +78,6 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
 
     @Override
     public boolean performContextMenuAction(int id) {
-
         return super.performContextMenuAction(id);
     }
 
@@ -109,12 +108,7 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
     @Override
     public boolean sendKeyEvent(KeyEvent event) {
         Log.d("Yu", "sendKeyEvent:" + event.toString());
-
-        boolean result = mDocument.handleKeyEvent(event);
-        if (result) {
-            mCodeSpace.invalidate();
-        }
-        return result;
+        return super.sendKeyEvent(event);
     }
 
     @Override
