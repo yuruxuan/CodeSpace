@@ -38,9 +38,9 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
 
     @Override
     public boolean setComposingRegion(int start, int end) {
-        super.setComposingRegion(start, end);
+        boolean result = super.setComposingRegion(start, end);
         mCodeSpace.invalidate();
-        return true;
+        return result;
     }
 
     @Override
@@ -64,10 +64,12 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
     @Override
     public boolean commitText(CharSequence text, int newCursorPosition) {
         Log.d("Yu", "commitText:" + text + " " + newCursorPosition);
-        super.commitText(text, newCursorPosition);
+        boolean result = super.commitText(text, newCursorPosition);
+        mCodeSpace.notifyImmUpdateSelection(mDocument.getSelectionStart(), mDocument.getSelectionEnd());
         mDocument.analyze();
         mCodeSpace.invalidate();
-        return true;
+        mCodeSpace.postScrollFollowCursor();
+        return result;
     }
 
     @Override
@@ -120,19 +122,23 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
     @Override
     public boolean setComposingText(CharSequence text, int newCursorPosition) {
         Log.d("Yu", "setComposingText:" + text + " " + newCursorPosition);
-        super.setComposingText(text, newCursorPosition);
+        boolean result = super.setComposingText(text, newCursorPosition);
+        mCodeSpace.notifyImmUpdateSelection(mDocument.getSelectionStart(), mDocument.getSelectionEnd());
         mDocument.analyze();
         mCodeSpace.invalidate();
-        return true;
+        mCodeSpace.postScrollFollowCursor();
+        return result;
     }
 
     @Override
     public boolean deleteSurroundingText(int beforeLength, int afterLength) {
         Log.d("Yu", "deleteSurroundingText:" + beforeLength + " " + afterLength);
-        super.deleteSurroundingText(beforeLength, afterLength);
+        boolean result = super.deleteSurroundingText(beforeLength, afterLength);
+        mCodeSpace.notifyImmUpdateSelection(mDocument.getSelectionStart(), mDocument.getSelectionEnd());
         mDocument.analyze();
         mCodeSpace.invalidate();
-        return true;
+        mCodeSpace.postScrollFollowCursor();
+        return result;
     }
 
     @Override
@@ -144,9 +150,11 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
     @Override
     public boolean finishComposingText() {
         Log.d("Yu", "finishComposingText");
-        super.finishComposingText();
+        boolean result = super.finishComposingText();
+        mCodeSpace.notifyImmUpdateSelection(mDocument.getSelectionStart(), mDocument.getSelectionEnd());
         mCodeSpace.invalidate();
-        return true;
+        mCodeSpace.postScrollFollowCursor();
+        return result;
     }
 
     @Override
@@ -168,10 +176,4 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
         return super.reportFullscreenMode(enabled);
     }
 
-    private boolean noNeedComposingIME(String pkg) {
-        if (TextUtils.equals("com.sohu.inputmethod.sogou", pkg)) {
-            return true;
-        }
-        return false;
-    }
 }

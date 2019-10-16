@@ -54,8 +54,7 @@ public class CodeSpace extends View implements Document.SelectionChangedCallback
 
     private int mSpaceWidth;
 
-    private int mCursorCenterX;
-    private int mCursorCenterY;
+    private Rect mCursorRect = new Rect();
 
     private int mLongestLineWidth = 0;
     private int mContentHeight = 0;
@@ -137,6 +136,10 @@ public class CodeSpace extends View implements Document.SelectionChangedCallback
         return true;
     }
 
+    public void notifyImmUpdateSelection(int start, int end) {
+        mInputMethodManager.updateSelection(this, start, end, mDocument.getComposingIndexStart(), mDocument.getComposingIndexEnd());
+    }
+
     /**
      * Android Develop Doc:
      * Editor authors, you need to call this method whenever the cursor moves in your editor.
@@ -144,32 +147,27 @@ public class CodeSpace extends View implements Document.SelectionChangedCallback
     @Override
     public void onSelectionChanged(int start, int end) {
         Log.e("Yu", "notify onSelectionChanged " + start + " " + end);
-        mInputMethodManager.updateSelection(this, start, end, mDocument.getComposingIndexStart(), mDocument.getComposingIndexEnd());
+        notifyImmUpdateSelection(start, end);
         invalidate();
     }
 
     @Override
     public int getLastLineRelativeOffset() {
-        int x = mCursorCenterX;
-        int y = Math.max(0, mCursorCenterY - getRowHeight());
+        int x = (mCursorRect.left + mCursorRect.right) / 2;
+        int y = Math.max(0, (mCursorRect.top + mCursorRect.bottom) / 2 - getRowHeight());
         return getOffsetNearXY(x + getScrollX() - getPaddingStart(), y + getScrollY() - getPaddingTop());
     }
 
     @Override
     public int getNextLineRelativeOffset() {
-        int x = mCursorCenterX;
-        int y = Math.min(mDocument.getLineCountForDraw() * getRowHeight(), mCursorCenterY + getRowHeight());
+        int x = (mCursorRect.left + mCursorRect.right) / 2;
+        int y = Math.min(mDocument.getLineCountForDraw() * getRowHeight(),
+                (mCursorRect.top + mCursorRect.bottom) / 2 + getRowHeight());
         return getOffsetNearXY(x + getScrollX() - getPaddingStart(), y + getScrollY() - getPaddingTop());
     }
 
     @Override
     public void onTextChanged(String before, String after) {
-
-    }
-
-    // We just follow cursor when user input something,
-    // don't care selection and others.
-    private void scrollFollowCursor() {
 
     }
 
@@ -475,15 +473,71 @@ public class CodeSpace extends View implements Document.SelectionChangedCallback
             x = x + getCharWidth(c);
         }
 
-        mCursorCenterX = x;
-        mCursorCenterY = (int) (lineIndex * getRowHeight() + 0.5f * getRowHeight());
-
         int cursorWidth = dp2px(DEFAULT_CURSOR_WIDTH_DP);
-        canvas.drawRect(x - cursorWidth / 2,
+        mCursorRect = new Rect(x - cursorWidth / 2,
                 lineIndex * getRowHeight() + getPaddingTop(),
                 x + cursorWidth / 2,
-                (lineIndex + 1) * getRowHeight() + getPaddingTop(),
-                mCursorPaint);
+                (lineIndex + 1) * getRowHeight() + getPaddingTop());
+        canvas.drawRect(mCursorRect, mCursorPaint);
+    }
+
+
+    //////////////////////   Scroll  //////////////////////
+
+    // We just follow cursor when user input something,
+    // don't care selection and others.
+    public void postScrollFollowCursor() {
+        post(new Runnable() {
+            @Override
+            public void run() {
+                scrollFollowCursor();
+            }
+        });
+    }
+
+    private void scrollFollowCursor() {
+        int fromX = getScrollX();
+        int fromY = getScrollY();
+        int toX = getScrollX() + getWidth();
+        int toY = getScrollY() + getHeight();
+
+        boolean needScroll = false;
+        int targetX = fromX;
+        int targetY = fromY;
+
+        int cursorCenterX = (mCursorRect.left + mCursorRect.right) / 2;
+        if (fromX > cursorCenterX) {
+            needScroll = true;
+            targetX = cursorCenterX - getWidth() / 2;
+        } else if (toX < cursorCenterX) {
+            needScroll = true;
+            targetX = cursorCenterX + getWidth() / 2;
+        }
+
+        if (fromY > mCursorRect.top) {
+            needScroll = true;
+            targetY = mCursorRect.top - getHeight() / 2;
+        } else if (toY < mCursorRect.bottom) {
+            needScroll = true;
+            targetY = mCursorRect.bottom + getHeight() / 2;
+        }
+
+        if (needScroll) {
+            safeScrollTo(targetX, targetY);
+        }
+    }
+
+    public void safeScrollTo(int targetX, int targetY) {
+        int maxScrollX = Math.max(0, getLongestLineWidth() - getWidth());
+        int maxScrollY = Math.max(0, getContentHeight() - getHeight());
+
+        targetX = Math.max(0, targetX);
+        targetX = Math.min(maxScrollX, targetX);
+
+        targetY = Math.max(0, targetY);
+        targetY = Math.min(maxScrollY, targetY);
+
+        scrollTo(targetX, targetY);
     }
 
 

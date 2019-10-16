@@ -1,6 +1,5 @@
 package coding.yu.codespace.touch;
 
-import android.content.Context;
 import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
@@ -52,17 +51,10 @@ public class TouchGestureListener extends GestureDetector.SimpleOnGestureListene
         int dX = (int) distanceX;
         int dY = (int) distanceY;
 
+        int targetX = mCodeSpace.getScrollX() + dX;
+        int targetY = mCodeSpace.getScrollY() + dY;
 
-        int maxScrollX = Math.max(0, mCodeSpace.getLongestLineWidth() - mCodeSpace.getWidth());
-        int targetX = Math.max(0, mCodeSpace.getScrollX() + dX);
-        targetX = Math.min(maxScrollX, targetX);
-
-        int maxScrollY = Math.max(0, mCodeSpace.getContentHeight() - mCodeSpace.getHeight());
-        int targetY = Math.max(0, mCodeSpace.getScrollY() + dY);
-        targetY = Math.min(maxScrollY, targetY);
-
-        mCodeSpace.scrollTo(targetX, targetY);
-
+        mCodeSpace.safeScrollTo(targetX, targetY);
         return true;
     }
 
