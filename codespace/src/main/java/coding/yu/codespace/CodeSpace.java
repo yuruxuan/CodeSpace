@@ -626,6 +626,7 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
         boolean result = mDocument.handleKeyEvent(event);
         if (result) {
             notifySelectionChangeInvalidate();
+            postScrollFollowCursor();
         }
         return result;
     }
@@ -638,7 +639,9 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
         mDocument.moveCursor(offset, false);
         notifySelectionChangeInvalidate();
 
-        showInsertionHandle(getCursorRectOnScreen());
+        Rect rect = getCursorRectOnScreen();
+        rect.offset(-getScrollX(), -getScrollY());
+        showInsertionHandle(rect);
 
         if (mActionMode != null) {
             mActionMode.finish();
@@ -678,7 +681,10 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
                         mDocument.moveCursor(offset, false);
                         measureRect();
                         invalidate();
-                        showInsertionHandle(getCursorRectOnScreen());
+
+                        Rect rect = getCursorRectOnScreen();
+                        rect.offset(-getScrollX(), -getScrollY());
+                        showInsertionHandle(rect);
                     }
 
                     break;

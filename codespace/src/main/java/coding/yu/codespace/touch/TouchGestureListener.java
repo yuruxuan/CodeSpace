@@ -55,6 +55,7 @@ public class TouchGestureListener extends GestureDetector.SimpleOnGestureListene
         int targetY = mCodeSpace.getScrollY() + dY;
 
         mCodeSpace.safeScrollTo(targetX, targetY);
+        mCodeSpace.dismissInsertionHandle();
         return true;
     }
 
