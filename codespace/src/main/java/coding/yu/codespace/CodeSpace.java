@@ -27,8 +27,7 @@ import coding.yu.codespace.touch.TouchGestureListener;
 /**
  * Created by yu on 9/18/2019.
  */
-public class CodeSpace extends View implements Document.SelectionChangedCallback, Document.OffsetMeasure,
-        Document.TextChangeListener {
+public class CodeSpace extends View implements Document.OffsetMeasure, Document.TextChangeListener {
 
     private static final int DEFAULT_TEXT_SIZE_SP = 16;
     private static final int DEFAULT_CURSOR_WIDTH_DP = 2;
@@ -79,7 +78,6 @@ public class CodeSpace extends View implements Document.SelectionChangedCallback
     private void init() {
         mInputMethodManager = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
         mGestureDetector = TouchGestureListener.setup(this);
-        mDocument.setCursorMoveCallback(this);
         mDocument.setOffsetMeasure(this);
 
         mTextPaint.setAntiAlias(true);
@@ -136,18 +134,9 @@ public class CodeSpace extends View implements Document.SelectionChangedCallback
         return true;
     }
 
-    public void notifyImmUpdateSelection(int start, int end) {
-        mInputMethodManager.updateSelection(this, start, end, mDocument.getComposingIndexStart(), mDocument.getComposingIndexEnd());
-    }
-
-    /**
-     * Android Develop Doc:
-     * Editor authors, you need to call this method whenever the cursor moves in your editor.
-     */
-    @Override
-    public void onSelectionChanged(int start, int end) {
-        Log.e("Yu", "notify onSelectionChanged " + start + " " + end);
-        notifyImmUpdateSelection(start, end);
+    public void notifySelectionChangeInvalidate() {
+        mInputMethodManager.updateSelection(this, mDocument.getSelectionStart(), mDocument.getSelectionEnd(),
+                mDocument.getComposingIndexStart(), mDocument.getComposingIndexEnd());
         invalidate();
     }
 
@@ -545,7 +534,11 @@ public class CodeSpace extends View implements Document.SelectionChangedCallback
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        return mDocument.handleKeyEvent(event);
+        boolean result = mDocument.handleKeyEvent(event);
+        if (result) {
+            notifySelectionChangeInvalidate();
+        }
+        return result;
     }
 
 
@@ -554,6 +547,7 @@ public class CodeSpace extends View implements Document.SelectionChangedCallback
     public void onSingleTapUp(int x, int y) {
         int offset = getOffsetNearXY(x + getScrollX() - getPaddingStart(), y + getScrollY() - getPaddingTop());
         mDocument.moveCursor(offset, false);
+        notifySelectionChangeInvalidate();
 
         if (mActionMode != null) {
             mActionMode.finish();
@@ -563,6 +557,7 @@ public class CodeSpace extends View implements Document.SelectionChangedCallback
     public void onLongPress(int x, int y) {
         int[] range = getWordNearXY(x + getScrollX() - getPaddingStart(), y + getScrollY() - getPaddingTop());
         mDocument.setSelection(range[0], range[1]);
+        notifySelectionChangeInvalidate();
 
         mActionMode = mActionCallback.startActionMode(this);
     }

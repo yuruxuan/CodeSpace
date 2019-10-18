@@ -325,10 +325,6 @@ public class Document {
         }
 
         setCursorPosition(absOffset);
-
-        if (mSelectionChangedCallback != null) {
-            mSelectionChangedCallback.onSelectionChanged(absOffset, absOffset);
-        }
     }
 
     public void moveCursorLeft() {
@@ -372,10 +368,6 @@ public class Document {
         end = Math.max(end, 0);
 
         Selection.setSelection(mText, start, end);
-
-        if (mSelectionChangedCallback != null) {
-            mSelectionChangedCallback.onSelectionChanged(getSelectionStart(), getSelectionEnd());
-        }
     }
 
     public int getSelectionStart() {
@@ -407,15 +399,12 @@ public class Document {
                 // Do nothing...
             } else if ((ch = KeyCodeConverter.convertOther(event.getKeyCode())) != 0) {
                 insert(getCursorPosition(), ch);
-                moveCursorRight();
             } else if ((ch = KeyCodeConverter.convertLetter(event.getKeyCode(),
                     event.isCapsLockOn() || event.isShiftPressed())) != 0) {
                 insert(getCursorPosition(), ch);
-                moveCursorRight();
             } else if ((ch = KeyCodeConverter.convertNumSign(event.getKeyCode(),
                     event.isShiftPressed())) != 0) {
                 insert(getCursorPosition(), ch);
-                moveCursorRight();
             }
         }
         return true;
@@ -445,7 +434,6 @@ public class Document {
         if (event.getKeyCode() == KeyEvent.KEYCODE_DEL) {
             if (getCursorPosition() - 1 >= 0) {
                 delete(getCursorPosition() - 1, getCursorPosition());
-                moveCursorLeft();
             }
             return true;
         }
