@@ -1,20 +1,61 @@
 package coding.yu.codespace.handle;
 
-import android.content.Context;
-import android.util.AttributeSet;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
+import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.PopupWindow;
 
-public abstract class HandleView extends View {
+import androidx.appcompat.widget.AppCompatImageView;
+import androidx.core.graphics.drawable.DrawableCompat;
 
-    private PopupWindow mPopupWindow;
+public abstract class HandleView extends AppCompatImageView {
 
-    public HandleView(Context context) {
-        super(context);
-        init();
+    private static final int HANDLE_OFFSET_Y_PX = 3;
+
+    private View mParent;
+    private PopupWindow mContainer;
+
+    public HandleView(View parent, int drawableId, int color) {
+        super(parent.getContext());
+        mParent = parent;
+
+        Drawable drawable = mParent.getContext().getDrawable(drawableId);
+        Drawable wrappedDrawable = DrawableCompat.wrap(drawable);
+        DrawableCompat.setTint(wrappedDrawable, color);
+        setImageDrawable(wrappedDrawable);
+        setBackgroundColor(Color.TRANSPARENT);
+
+        mContainer = new PopupWindow(getContext());
+        mContainer.setSplitTouchEnabled(true);
+        mContainer.setClippingEnabled(false);
+        mContainer.setWidth(ViewGroup.LayoutParams.WRAP_CONTENT);
+        mContainer.setHeight(ViewGroup.LayoutParams.WRAP_CONTENT);
+        mContainer.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        mContainer.setContentView(this);
     }
 
-    private void init() {
+    public abstract int getAnchorX();
 
+    public abstract int getAnchorY();
+
+    public boolean isShowing() {
+        return mContainer.isShowing();
+    }
+
+    public void show(int x, int y) {
+        mContainer.showAtLocation(mParent, Gravity.NO_GRAVITY,
+                x + getAnchorX(), y + getAnchorY() + HANDLE_OFFSET_Y_PX);
+    }
+
+    public void update(int x, int y) {
+        mContainer.update(x + getAnchorX(), y + getAnchorY() + HANDLE_OFFSET_Y_PX,
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+    }
+
+    public void dismiss() {
+        mContainer.dismiss();
     }
 }

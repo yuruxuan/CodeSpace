@@ -2,7 +2,6 @@ package coding.yu.codespace;
 
 import android.os.Bundle;
 import android.text.Editable;
-import android.text.TextUtils;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.inputmethod.BaseInputConnection;
@@ -67,6 +66,7 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
         boolean result = super.commitText(text, newCursorPosition);
         mDocument.analyze();
         mCodeSpace.notifySelectionChangeInvalidate();
+        mCodeSpace.dismissInsertionHandle();
         mCodeSpace.postScrollFollowCursor();
         return result;
     }
@@ -124,6 +124,7 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
         boolean result = super.setComposingText(text, newCursorPosition);
         mDocument.analyze();
         mCodeSpace.notifySelectionChangeInvalidate();
+        mCodeSpace.dismissInsertionHandle();
         mCodeSpace.postScrollFollowCursor();
         return result;
     }
@@ -134,6 +135,7 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
         boolean result = super.deleteSurroundingText(beforeLength, afterLength);
         mDocument.analyze();
         mCodeSpace.notifySelectionChangeInvalidate();
+        mCodeSpace.dismissInsertionHandle();
         mCodeSpace.postScrollFollowCursor();
         return result;
     }

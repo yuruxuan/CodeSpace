@@ -12,6 +12,10 @@ public class LightColor extends ColorStyle {
     private static final int COLOR_COMMENT = 0xffaaaaaa;
     private static final int COLOR_COMMON_TEXT = 0xff333333;
 
+    private static final int COLOR_CURSOR = 0x9900ff00;
+    private static final int COLOR_SELECTION = 0x9900ff00;
+    private static final int COLOR_LINE_BACKGROUND = 0x33ff0000;
+
     @Override
     public int getKeywordColor() {
         return COLOR_KEYWORD;
@@ -40,5 +44,20 @@ public class LightColor extends ColorStyle {
     @Override
     public int getCommonTextColor() {
         return COLOR_COMMON_TEXT;
+    }
+
+    @Override
+    public int getCursorColor() {
+        return COLOR_CURSOR;
+    }
+
+    @Override
+    public int getSelectionColor() {
+        return COLOR_SELECTION;
+    }
+
+    @Override
+    public int getLineBackgroundColor() {
+        return COLOR_LINE_BACKGROUND;
     }
 }

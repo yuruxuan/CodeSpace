@@ -5,26 +5,26 @@ import android.content.res.Resources;
 import android.graphics.drawable.Drawable;
 import android.util.Log;
 import android.view.View;
-import android.widget.PopupWindow;
 
-import coding.yu.codespace.CodeSpace;
 import coding.yu.codespace.R;
 
-public class InsertionHandleView extends HandleView {
+public class SelectionLeftHandleView extends HandleView {
 
     private int mAnchorX;
+    private int mAnchorY;
 
-    public InsertionHandleView(View parent, int color) {
-        super(parent, R.drawable.cs_text_select_handle_middle_mtrl_alpha, color);
+    public SelectionLeftHandleView(View parent, int color) {
+        super(parent, R.drawable.cs_text_select_handle_left_mtrl_alpha, color);
 
         Resources resources = parent.getContext().getResources();
-        Drawable drawable = resources.getDrawable(R.drawable.cs_text_select_handle_middle_mtrl_alpha);
-        mAnchorX = - drawable.getIntrinsicWidth() / 2;
+        Drawable drawable = resources.getDrawable(R.drawable.cs_text_select_handle_left_mtrl_alpha);
+        mAnchorX = - drawable.getIntrinsicWidth();
+        Log.e("Yu", "mAnchorX:" + mAnchorX);
     }
 
     @Override
     public int getAnchorX() {
-        return mAnchorX;
+        return 0;
     }
 
     @Override

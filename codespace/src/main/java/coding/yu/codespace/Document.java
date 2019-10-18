@@ -28,12 +28,6 @@ public class Document {
     private List<Token> mTokenList = new ArrayList<>();
     private Token mLastToken;
 
-    private SelectionChangedCallback mSelectionChangedCallback;
-
-    public void setCursorMoveCallback(SelectionChangedCallback callback) {
-        this.mSelectionChangedCallback = callback;
-    }
-
     private OffsetMeasure mOffsetMeasure;
 
     public void setOffsetMeasure(OffsetMeasure offsetMeasure) {
@@ -443,10 +437,6 @@ public class Document {
 
 
     //////////////////////   Interface   //////////////////////
-
-    public interface SelectionChangedCallback {
-        void onSelectionChanged(int start, int end);
-    }
 
     public interface OffsetMeasure {
         int getLastLineRelativeOffset();
