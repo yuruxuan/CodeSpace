@@ -102,8 +102,8 @@ public class ActionCallbackCompat {
         @Override
         public void onGetContentRect(ActionMode mode, View view, Rect outRect) {
             super.onGetContentRect(mode, view, outRect);
-            // This rect is the selection rect.
-            Log.e("Yu", "view:" + view + ", rect:" + outRect);
+            CodeSpace codeSpace = (CodeSpace) view;
+            outRect.set(codeSpace.getSelectionRegion());
         }
     }
 }

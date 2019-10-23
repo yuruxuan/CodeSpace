@@ -276,7 +276,7 @@ public class Document {
      * We think every line has string.
      */
     public String getLineText(int line) {
-        if (line < mLines.size()) {
+        if (line >= 0 && line < mLines.size()) {
             return mLines.get(line);
         } else {
             return "";

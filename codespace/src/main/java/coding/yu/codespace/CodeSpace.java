@@ -1,15 +1,14 @@
 package coding.yu.codespace;
 
-import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.text.InputType;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.ActionMode;
 import android.view.GestureDetector;
 import android.view.KeyEvent;
@@ -37,6 +36,7 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
     private static final int DEFAULT_CURSOR_WIDTH_DP = 2;
     private static final int DEFAULT_COMPOSING_UNDERLINE_WIDTH_DP = 1;
     private static final int COMPOSING_UNDERLINE_TEXT_SPACE_PX = 1;
+    private static final int SEARCH_FORWARD_BEHIND_COUNT = 6;
 
     private CodeSpaceInputConnection mInputConnection;
     private GestureDetector mGestureDetector;
@@ -51,13 +51,16 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
     private Rect mSelectionRegion = new Rect();
 
     private Rect mCursorRect = new Rect();
-    private Rect mSelectionTop;
-    private Rect mSelectionMiddle;
-    private Rect mSelectionBottom;
+    private Rect mSelectionTop = new Rect();
+    private Rect mSelectionMiddle = new Rect();
+    private Rect mSelectionBottom = new Rect();
 
     private InsertionHandleView mInsertionHandle;
     private SelectionLeftHandleView mSelectionLeftHandle;
     private SelectionRightHandleView mSelectionRightHandle;
+    private Point mSelectionLeftHandlePoint = new Point();
+    private Point mSelectionRightHandlePoint = new Point();
+
 
     private Paint mLineBackgroundPaint = new Paint();
     private Paint mSelectionPaint = new Paint();
@@ -106,6 +109,12 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
         mInsertionHandle = new InsertionHandleView(this, getColorStyle().getCursorColor());
         mInsertionHandle.setOnTouchListener(new InsertionHandleListener());
 
+        mSelectionLeftHandle = new SelectionLeftHandleView(this, getColorStyle().getCursorColor());
+        mSelectionLeftHandle.setOnTouchListener(new SelectionHandleListener(true));
+
+        mSelectionRightHandle = new SelectionRightHandleView(this, getColorStyle().getCursorColor());
+        mSelectionRightHandle.setOnTouchListener(new SelectionHandleListener(false));
+
         setFocusable(true);
         setFocusableInTouchMode(true);
         setLongClickable(true);
@@ -131,6 +140,14 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
         getGlobalVisibleRect(rect);
         cursorRect.offset(rect.left, rect.top);
         return cursorRect;
+    }
+
+    public Point getPointOnScreen(Point p) {
+        Point newPoint = new Point(p);
+        Rect rect = new Rect();
+        getGlobalVisibleRect(rect);
+        newPoint.offset(rect.left, rect.top);
+        return newPoint;
     }
 
     @Override
@@ -237,9 +254,47 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
     }
 
     public int[] getWordNearXY(int x, int y) {
+        String str = mDocument.toString();
         int position = getOffsetNearXY(x, y);
 
-        return new int[]{position, mDocument.length()};
+        int from = position - SEARCH_FORWARD_BEHIND_COUNT;
+        int to = position + SEARCH_FORWARD_BEHIND_COUNT;
+
+        for (int i = position - 1; i >= position - SEARCH_FORWARD_BEHIND_COUNT; i--) {
+            if (i < 0 || i >= mDocument.length()) {
+                break;
+            }
+            char c = str.charAt(i);
+            if (c == ' ' || c == '\n') {
+                from = i + 1;
+                break;
+            }
+        }
+
+        for (int i = position; i < position + SEARCH_FORWARD_BEHIND_COUNT; i++) {
+            if (i < 0 || i >= mDocument.length()) {
+                break;
+            }
+            char c = str.charAt(i);
+            if (c == ' ' || c == '\n') {
+                to = i;
+                break;
+            }
+        }
+
+        if (from < 0) {
+            from = 0;
+        }
+
+        if (from > mDocument.length()) {
+            from = mDocument.length();
+        }
+
+        if (to > mDocument.length()) {
+            to = mDocument.length();
+        }
+
+        return new int[]{from, to};
     }
 
     private int getRowHeight() {
@@ -312,6 +367,10 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
     }
 
     private void measureSelectionRect() {
+        mSelectionTop.setEmpty();
+        mSelectionMiddle.setEmpty();
+        mSelectionBottom.setEmpty();
+
         int startSelect = mDocument.getSelectionStart();
         int endSelect = mDocument.getSelectionEnd();
 
@@ -338,10 +397,13 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
                 endX = endX + getCharWidth(c);
             }
 
-            mSelectionMiddle = new Rect(startX,
+            mSelectionMiddle.set(startX + getPaddingStart(),
                     startLine * getRowHeight() + getPaddingTop(),
                     endX + getPaddingStart(),
                     (startLine + 1) * getRowHeight() + getPaddingTop());
+
+            mSelectionLeftHandlePoint.set(mSelectionMiddle.left, mSelectionMiddle.bottom);
+            mSelectionRightHandlePoint.set(mSelectionMiddle.right, mSelectionMiddle.bottom);
 
         } else {
             // 1.Pre draw first select line background.
@@ -355,7 +417,7 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
                 startX = startX + getCharWidth(c);
             }
 
-            mSelectionTop = new Rect(startX,
+            mSelectionTop.set(startX + getPaddingStart(),
                     startLine * getRowHeight() + getPaddingTop(),
                     Integer.MAX_VALUE,
                     (startLine + 1) * getRowHeight() + getPaddingTop());
@@ -371,20 +433,53 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
                 endX = endX + getCharWidth(c);
             }
 
-            mSelectionMiddle = new Rect(0,
+            mSelectionBottom.set(0,
                     endLine * getRowHeight() + getPaddingTop(),
                     endX + getPaddingStart(),
                     (endLine + 1) * getRowHeight() + getPaddingTop());
 
             // 3.Pre draw middle select line background.
             if (endLine - startLine > 1) {
-                mSelectionBottom = new Rect(0,
+                mSelectionMiddle.set(0,
                         (startLine + 1) * getRowHeight() + getPaddingTop(),
                         Integer.MAX_VALUE,
                         endLine * getRowHeight() + getPaddingTop());
 
             }
+
+            mSelectionLeftHandlePoint.set(mSelectionTop.left, mSelectionTop.bottom);
+            mSelectionRightHandlePoint.set(mSelectionBottom.right, mSelectionBottom.bottom);
         }
+
+        // Measure the max selection region
+        int left = Integer.MAX_VALUE;
+        int top = Integer.MAX_VALUE;
+        int right = Integer.MIN_VALUE;
+        int bottom = Integer.MIN_VALUE;
+
+        if (!mSelectionTop.isEmpty()) {
+            left = Math.min(left, mSelectionTop.left);
+            top = Math.min(top, mSelectionTop.top);
+            right = Math.max(right, mSelectionTop.right);
+            bottom = Math.max(bottom, mSelectionTop.bottom);
+        }
+        if (!mSelectionMiddle.isEmpty()) {
+            left = Math.min(left, mSelectionMiddle.left);
+            top = Math.min(top, mSelectionMiddle.top);
+            right = Math.max(right, mSelectionMiddle.right);
+            bottom = Math.max(bottom, mSelectionMiddle.bottom);
+        }
+        if (!mSelectionBottom.isEmpty()) {
+            left = Math.min(left, mSelectionBottom.left);
+            top = Math.min(top, mSelectionBottom.top);
+            right = Math.max(right, mSelectionBottom.right);
+            bottom = Math.max(bottom, mSelectionBottom.bottom);
+        }
+        mSelectionRegion.set(left, top, right, bottom);
+    }
+
+    public Rect getSelectionRegion() {
+        return mSelectionRegion;
     }
 
 
@@ -531,11 +626,11 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
             canvas.drawRect(mSelectionTop, mSelectionPaint);
 
             // 2.Draw last select line background.
-            canvas.drawRect(mSelectionMiddle, mSelectionPaint);
+            canvas.drawRect(mSelectionBottom, mSelectionPaint);
 
             // 3.Draw middle select line background.
             if (endLine - startLine > 1) {
-                canvas.drawRect(mSelectionBottom, mSelectionPaint);
+                canvas.drawRect(mSelectionMiddle, mSelectionPaint);
             }
         }
     }
@@ -618,6 +713,24 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
         mInsertionHandle.dismiss();
     }
 
+    public void showSelectionHandle(Point start, Point end) {
+        if (mSelectionLeftHandle.isShowing()) {
+            mSelectionLeftHandle.update(start.x, start.y);
+        } else {
+            mSelectionLeftHandle.show(start.x, start.y);
+        }
+
+        if (mSelectionRightHandle.isShowing()) {
+            mSelectionRightHandle.update(end.x, end.y);
+        } else {
+            mSelectionRightHandle.show(end.x, end.y);
+        }
+    }
+
+    public void dismissSelectionHandle() {
+        mSelectionLeftHandle.dismiss();
+        mSelectionRightHandle.dismiss();
+    }
 
     //////////////////////   KeyEvent  //////////////////////
 
@@ -642,6 +755,7 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
         Rect rect = getCursorRectOnScreen();
         rect.offset(-getScrollX(), -getScrollY());
         showInsertionHandle(rect);
+        dismissSelectionHandle();
 
         if (mActionMode != null) {
             mActionMode.finish();
@@ -654,6 +768,8 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
         notifySelectionChangeInvalidate();
 
         dismissInsertionHandle();
+        showSelectionHandle(getPointOnScreen(mSelectionLeftHandlePoint),
+                getPointOnScreen(mSelectionRightHandlePoint));
 
         mActionMode = mActionCallback.startActionMode(this);
     }
@@ -685,6 +801,61 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
                         Rect rect = getCursorRectOnScreen();
                         rect.offset(-getScrollX(), -getScrollY());
                         showInsertionHandle(rect);
+                    }
+
+                    break;
+                case MotionEvent.ACTION_UP:
+                    notifySelectionChangeInvalidate();
+                    break;
+            }
+            return true;
+        }
+    }
+
+    private class SelectionHandleListener implements OnTouchListener {
+
+        boolean isLeft;
+        private Rect mGlobalVisibleRect = new Rect();
+        private int mOffsetX;
+        private int mOffsetY;
+
+        public SelectionHandleListener(boolean isLeft) {
+            this.isLeft = isLeft;
+        }
+
+        @Override
+        public boolean onTouch(View v, MotionEvent e) {
+            int rX = (int) e.getRawX();
+            int rY = (int) e.getRawY();
+            switch (e.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    if (isLeft) {
+                        mOffsetX = mSelectionLeftHandle.getPaddingSpace();
+                    } else {
+                        mOffsetX = -mSelectionRightHandle.getPaddingSpace();
+                    }
+                    mOffsetY = (int) (e.getY() + getRowHeight() / 2);
+                    break;
+                case MotionEvent.ACTION_MOVE:
+                    getGlobalVisibleRect(mGlobalVisibleRect);
+                    int targetX = rX + getScrollX() - getPaddingStart() - mGlobalVisibleRect.left;
+                    int targetY = rY + getScrollY() - getPaddingTop() - mGlobalVisibleRect.top;
+                    int offset = getOffsetNearXY(targetX + mOffsetX, targetY - mOffsetY);
+
+                    if (mDocument.getSelectionStart() != offset) {
+                        if (isLeft) {
+                            mDocument.setSelection(offset, mDocument.getSelectionEnd());
+                        } else {
+                            mDocument.setSelection(mDocument.getSelectionStart(), offset);
+                        }
+                        measureRect();
+                        invalidate();
+
+                        Point leftPoint = getPointOnScreen(mSelectionLeftHandlePoint);
+                        leftPoint.offset(-getScrollX(), -getScrollY());
+                        Point rightPoint = getPointOnScreen(mSelectionRightHandlePoint);
+                        rightPoint.offset(-getScrollX(), -getScrollY());
+                        showSelectionHandle(leftPoint, rightPoint);
                     }
 
                     break;

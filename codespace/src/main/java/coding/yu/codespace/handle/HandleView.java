@@ -58,4 +58,9 @@ public abstract class HandleView extends AppCompatImageView {
     public void dismiss() {
         mContainer.dismiss();
     }
+
+    int dp2px(float dpValue) {
+        final float scale = getContext().getResources().getDisplayMetrics().density;
+        return (int) (dpValue * scale + 0.5f);
+    }
 }
