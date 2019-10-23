@@ -332,6 +332,12 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
         return mContentHeight;
     }
 
+    public void finishActionMode() {
+        if (mActionMode != null) {
+            mActionMode.finish();
+        }
+    }
+
 
     //////////////////////   Measure Rect   //////////////////////
 
@@ -732,6 +738,16 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
         mSelectionRightHandle.dismiss();
     }
 
+    public void updateSelectionHandleOnScroll() {
+        if (mSelectionLeftHandle.isShowing() && mSelectionRightHandle.isShowing()) {
+            Point leftPoint = getPointOnScreen(mSelectionLeftHandlePoint);
+            leftPoint.offset(-getScrollX(), -getScrollY());
+            Point rightPoint = getPointOnScreen(mSelectionRightHandlePoint);
+            rightPoint.offset(-getScrollX(), -getScrollY());
+            showSelectionHandle(leftPoint, rightPoint);
+        }
+    }
+
     //////////////////////   KeyEvent  //////////////////////
 
     @Override
@@ -757,9 +773,7 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
         showInsertionHandle(rect);
         dismissSelectionHandle();
 
-        if (mActionMode != null) {
-            mActionMode.finish();
-        }
+        finishActionMode();
     }
 
     public void onLongPress(int x, int y) {
@@ -768,8 +782,12 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
         notifySelectionChangeInvalidate();
 
         dismissInsertionHandle();
-        showSelectionHandle(getPointOnScreen(mSelectionLeftHandlePoint),
-                getPointOnScreen(mSelectionRightHandlePoint));
+
+        Point leftPoint = getPointOnScreen(mSelectionLeftHandlePoint);
+        leftPoint.offset(-getScrollX(), -getScrollY());
+        Point rightPoint = getPointOnScreen(mSelectionRightHandlePoint);
+        rightPoint.offset(-getScrollX(), -getScrollY());
+        showSelectionHandle(leftPoint, rightPoint);
 
         mActionMode = mActionCallback.startActionMode(this);
     }

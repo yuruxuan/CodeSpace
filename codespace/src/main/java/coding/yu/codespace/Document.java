@@ -92,11 +92,6 @@ public class Document {
 
     //////////////////////   Composing Text  //////////////////////
 
-//    public void setComposingRegion(int start, int end) {
-//        this.mComposingIndexStart = start;
-//        this.mComposingIndexEnd = end;
-//    }
-
     public int getComposingIndexStart() {
         return BaseInputConnection.getComposingSpanStart(mText);
     }
@@ -370,6 +365,10 @@ public class Document {
 
     public int getSelectionEnd() {
         return Selection.getSelectionEnd(mText);
+    }
+
+    public void selectAll() {
+        setSelection(0, mText.length());
     }
 
 

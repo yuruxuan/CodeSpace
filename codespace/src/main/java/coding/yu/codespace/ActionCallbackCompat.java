@@ -13,16 +13,18 @@ import android.view.View;
 
 public class ActionCallbackCompat {
 
+    private CodeSpace mCodeSpace;
     private Context mContext;
     private ActionCallback mActionCallback = new ActionCallback();
     private ActionCallback2 mActionCallback2 = new ActionCallback2();
 
-    public ActionMode startActionMode(View view) {
-        mContext = view.getContext();
+    public ActionMode startActionMode(CodeSpace codeSpace) {
+        mCodeSpace = codeSpace;
+        mContext = codeSpace.getContext();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            return view.startActionMode(mActionCallback2, ActionMode.TYPE_FLOATING);
+            return codeSpace.startActionMode(mActionCallback2, ActionMode.TYPE_FLOATING);
         } else {
-            return view.startActionMode(mActionCallback);
+            return codeSpace.startActionMode(mActionCallback);
         }
     }
 
@@ -66,6 +68,11 @@ public class ActionCallbackCompat {
 
         @Override
         public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
+            if (item.getItemId() == 0) {
+                mCodeSpace.getDocument().selectAll();
+                mCodeSpace.notifySelectionChangeInvalidate();
+                return true;
+            }
             return false;
         }
 
