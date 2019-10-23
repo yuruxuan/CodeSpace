@@ -842,7 +842,22 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
                     int targetY = rY + getScrollY() - getPaddingTop() - mGlobalVisibleRect.top;
                     int offset = getOffsetNearXY(targetX + mOffsetX, targetY - mOffsetY);
 
-                    if (mDocument.getSelectionStart() != offset) {
+                    int origin = isLeft ? mDocument.getSelectionStart() : mDocument.getSelectionEnd();
+                    int other = isLeft ? mDocument.getSelectionEnd() : mDocument.getSelectionStart();
+                    boolean needUpdate = false;
+                    if (offset != origin) {
+                        if (isLeft) {
+                            if (offset < other) {
+                                needUpdate = true;
+                            }
+                        } else {
+                            if (offset > other) {
+                                needUpdate = true;
+                            }
+                        }
+                    }
+
+                    if (needUpdate) {
                         if (isLeft) {
                             mDocument.setSelection(offset, mDocument.getSelectionEnd());
                         } else {
