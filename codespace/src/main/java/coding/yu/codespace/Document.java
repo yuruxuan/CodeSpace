@@ -389,8 +389,6 @@ public class Document {
      * 2.Framework > Activity > View
      */
     public boolean handleKeyEvent(KeyEvent event) {
-        Log.e("Yu", "handleKeyEvent " + KeyEvent.keyCodeToString(event.getKeyCode()));
-
         if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
             return false;
         }
