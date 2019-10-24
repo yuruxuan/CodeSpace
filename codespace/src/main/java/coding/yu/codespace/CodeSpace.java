@@ -7,6 +7,7 @@ import android.graphics.Paint;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.Typeface;
+import android.os.Build;
 import android.text.InputType;
 import android.util.AttributeSet;
 import android.view.ActionMode;
@@ -106,13 +107,13 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
 
         mSpaceWidth = (int) mTextPaint.measureText(" ");
 
-        mInsertionHandle = new InsertionHandleView(this, getColorStyle().getCursorColor());
+        mInsertionHandle = new InsertionHandleView(this, getColorStyle().getCursorHandleColor());
         mInsertionHandle.setOnTouchListener(new InsertionHandleListener());
 
-        mSelectionLeftHandle = new SelectionLeftHandleView(this, getColorStyle().getCursorColor());
+        mSelectionLeftHandle = new SelectionLeftHandleView(this, getColorStyle().getSelectionHandleColor());
         mSelectionLeftHandle.setOnTouchListener(new SelectionHandleListener(true));
 
-        mSelectionRightHandle = new SelectionRightHandleView(this, getColorStyle().getCursorColor());
+        mSelectionRightHandle = new SelectionRightHandleView(this, getColorStyle().getSelectionHandleColor());
         mSelectionRightHandle.setOnTouchListener(new SelectionHandleListener(false));
 
         setFocusable(true);
@@ -280,6 +281,9 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
             char c = str.charAt(i);
             if (c == ' ' || c == '\n') {
                 to = i;
+                if (from == to) {
+                    from--;
+                }
                 break;
             }
         }
@@ -337,6 +341,22 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
     public void finishActionMode() {
         if (mActionMode != null) {
             mActionMode.finish();
+        }
+    }
+
+    public void hideActionMode() {
+        if (mActionMode != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                mActionMode.hide(500);
+            }
+        }
+    }
+
+    public void invalidateActionMode() {
+        if (mActionMode != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                mActionMode.invalidateContentRect();
+            }
         }
     }
 
@@ -748,6 +768,13 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
         showSelectionHandle(leftPoint, rightPoint);
     }
 
+    public void updateSelectionHandleIfShown() {
+        if (mSelectionLeftHandle.isShowing() && mSelectionRightHandle.isShowing()) {
+            showSelectionHandle();
+        }
+    }
+
+
     //////////////////////   KeyEvent  //////////////////////
 
     @Override
@@ -891,11 +918,13 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
                         measureRect();
                         invalidate();
                         showSelectionHandle();
+                        hideActionMode();
                     }
 
                     break;
                 case MotionEvent.ACTION_UP:
                     notifySelectionChangeInvalidate();
+                    invalidateActionMode();
                     break;
             }
             return true;

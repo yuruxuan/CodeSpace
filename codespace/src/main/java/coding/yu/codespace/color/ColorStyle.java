@@ -21,7 +21,11 @@ public abstract class ColorStyle {
 
     public abstract int getCursorColor();
 
+    public abstract int getCursorHandleColor();
+
     public abstract int getSelectionColor();
+
+    public abstract int getSelectionHandleColor();
 
     public abstract int getLineBackgroundColor();
 }

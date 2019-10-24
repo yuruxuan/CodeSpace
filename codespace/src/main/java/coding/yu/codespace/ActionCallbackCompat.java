@@ -148,7 +148,7 @@ public class ActionCallbackCompat {
     }
 
     private String readFromClipboard(Context context) {
-        ClipboardManager cm = (ClipboardManager)context.getSystemService(CLIPBOARD_SERVICE);
+        ClipboardManager cm = (ClipboardManager) context.getSystemService(CLIPBOARD_SERVICE);
         if (cm != null) {
             ClipData clipData = cm.getPrimaryClip();
             if (clipData != null && clipData.getItemCount() > 0) {
@@ -188,11 +188,14 @@ public class ActionCallbackCompat {
         public void onGetContentRect(ActionMode mode, View view, Rect outRect) {
             super.onGetContentRect(mode, view, outRect);
             CodeSpace codeSpace = (CodeSpace) view;
+            Rect rect = new Rect();
             if (fromInsert) {
-                outRect.set(codeSpace.getCursorRect());
-            }else {
-                outRect.set(codeSpace.getSelectionRegion());
+                rect.set(codeSpace.getCursorRect());
+            } else {
+                rect.set(codeSpace.getSelectionRegion());
             }
+            rect.offset(-mCodeSpace.getScrollX(), -mCodeSpace.getScrollY());
+            outRect.set(rect);
         }
     }
 }

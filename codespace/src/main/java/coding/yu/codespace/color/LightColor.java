@@ -12,9 +12,11 @@ public class LightColor extends ColorStyle {
     private static final int COLOR_COMMENT = 0xffaaaaaa;
     private static final int COLOR_COMMON_TEXT = 0xff333333;
 
-    private static final int COLOR_CURSOR = 0x9900ff00;
-    private static final int COLOR_SELECTION = 0x9900ff00;
-    private static final int COLOR_LINE_BACKGROUND = 0x33ff0000;
+    private static final int COLOR_CURSOR = 0xff495cc1;
+    private static final int COLOR_CURSOR_HANDLE = 0xff495cc1;
+    private static final int COLOR_SELECTION = 0x33495cc1;
+    private static final int COLOR_SELECTION_HANDLE = 0xff495cc1;
+    private static final int COLOR_LINE_BACKGROUND = 0x10333333;
 
     @Override
     public int getKeywordColor() {
@@ -52,8 +54,18 @@ public class LightColor extends ColorStyle {
     }
 
     @Override
+    public int getCursorHandleColor() {
+        return COLOR_CURSOR_HANDLE;
+    }
+
+    @Override
     public int getSelectionColor() {
         return COLOR_SELECTION;
+    }
+
+    @Override
+    public int getSelectionHandleColor() {
+        return COLOR_SELECTION_HANDLE;
     }
 
     @Override

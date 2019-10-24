@@ -1,5 +1,6 @@
 package coding.yu.codespace.touch;
 
+import android.os.Handler;
 import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
@@ -13,6 +14,7 @@ import coding.yu.codespace.ime.IMEHelper;
 public class TouchGestureListener extends GestureDetector.SimpleOnGestureListener {
 
     private CodeSpace mCodeSpace;
+    private Handler mH = new Handler();
 
     public static GestureDetector setup(CodeSpace codeSpace) {
         TouchGestureListener listener = new TouchGestureListener(codeSpace);
@@ -56,7 +58,16 @@ public class TouchGestureListener extends GestureDetector.SimpleOnGestureListene
 
         mCodeSpace.safeScrollTo(targetX, targetY);
         mCodeSpace.dismissInsertionHandle();
-        mCodeSpace.showSelectionHandle();
+        mCodeSpace.updateSelectionHandleIfShown();
+
+        mCodeSpace.hideActionMode();
+        mH.removeCallbacksAndMessages(null);
+        mH.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                mCodeSpace.invalidateActionMode();
+            }
+        }, 300);
         return true;
     }
 
