@@ -94,7 +94,12 @@ public class ActionCallbackCompat {
                 String str = mCodeSpace.getDocument().toString();
                 String selection = str.substring(start, end);
                 copyToClipboard(mCodeSpace.getContext(), selection);
+
+                mCodeSpace.getDocument().recordBeforeEdit();
                 mCodeSpace.getDocument().delete(start, end);
+                mCodeSpace.getDocument().recordAfterEdit();
+                mCodeSpace.getDocument().notifyTextChangedIfNeed();
+
                 mCodeSpace.getDocument().removeSelect();
                 mCodeSpace.getDocument().setSelection(start, start);
                 mCodeSpace.notifySelectionChangeInvalidate();
@@ -122,7 +127,12 @@ public class ActionCallbackCompat {
                 if (!TextUtils.isEmpty(content)) {
                     int start = mCodeSpace.getDocument().getSelectionStart();
                     int end = mCodeSpace.getDocument().getSelectionEnd();
+
+                    mCodeSpace.getDocument().recordBeforeEdit();
                     mCodeSpace.getDocument().replace(start, end, content);
+                    mCodeSpace.getDocument().recordAfterEdit();
+                    mCodeSpace.getDocument().notifyTextChangedIfNeed();
+
                     mCodeSpace.getDocument().removeSelect();
                     mCodeSpace.getDocument().setSelection(start + content.length(), start + content.length());
                     mCodeSpace.notifySelectionChangeInvalidate();

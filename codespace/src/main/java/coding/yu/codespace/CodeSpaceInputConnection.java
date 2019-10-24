@@ -32,6 +32,19 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
     }
 
     @Override
+    public boolean beginBatchEdit() {
+        mDocument.recordBeforeEdit();
+        return super.beginBatchEdit();
+    }
+
+    @Override
+    public boolean endBatchEdit() {
+        mDocument.recordAfterEdit();
+        mDocument.notifyTextChangedIfNeed();
+        return super.endBatchEdit();
+    }
+
+    @Override
     public boolean setComposingRegion(int start, int end) {
         boolean result = super.setComposingRegion(start, end);
         mCodeSpace.invalidate();
@@ -40,8 +53,9 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
 
     @Override
     public boolean commitText(CharSequence text, int newCursorPosition) {
+        mDocument.setNeedAnalyzeLine(true);
         boolean result = super.commitText(text, newCursorPosition);
-        mDocument.analyze();
+        mDocument.setNeedAnalyzeLine(false);
         mCodeSpace.notifySelectionChangeInvalidate();
         mCodeSpace.dismissInsertionHandle();
         mCodeSpace.dismissSelectionHandle();
@@ -52,8 +66,12 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
 
     @Override
     public boolean setComposingText(CharSequence text, int newCursorPosition) {
+        if (needFixComposing() && newCursorPosition != 1) {
+            return true;
+        }
+        mDocument.setNeedAnalyzeLine(true);
         boolean result = super.setComposingText(text, newCursorPosition);
-        mDocument.analyze();
+        mDocument.setNeedAnalyzeLine(false);
         mCodeSpace.notifySelectionChangeInvalidate();
         mCodeSpace.dismissInsertionHandle();
         mCodeSpace.dismissSelectionHandle();

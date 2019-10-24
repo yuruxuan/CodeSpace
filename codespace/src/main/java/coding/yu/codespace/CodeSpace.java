@@ -9,6 +9,7 @@ import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.os.Build;
 import android.text.InputType;
+import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.view.ActionMode;
 import android.view.GestureDetector;
@@ -25,6 +26,7 @@ import coding.yu.codespace.handle.InsertionHandleView;
 import coding.yu.codespace.handle.SelectionLeftHandleView;
 import coding.yu.codespace.handle.SelectionRightHandleView;
 import coding.yu.codespace.ime.IMEHelper;
+import coding.yu.codespace.indicator.BaseIndicator;
 import coding.yu.codespace.lex.TokenType;
 import coding.yu.codespace.touch.TouchGestureListener;
 
@@ -75,6 +77,8 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
 
     private InputMethodManager mInputMethodManager;
 
+    private BaseIndicator mBaseIndicator;
+
     public CodeSpace(Context context) {
         super(context);
         init();
@@ -94,6 +98,7 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
         mInputMethodManager = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
         mGestureDetector = TouchGestureListener.setup(this);
         mDocument.setOffsetMeasure(this);
+        mDocument.setTextChangeListener(this);
 
         mTextPaint.setAntiAlias(true);
         mTextPaint.setColor(Color.BLACK);
@@ -123,6 +128,13 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
         requestFocus();
 
         measureRect();
+    }
+
+    public void bindLineIndicator(BaseIndicator indicator) {
+        mBaseIndicator = indicator;
+        if (mBaseIndicator != null) {
+            mBaseIndicator.updateSizeInfo(mTextPaint.getTextSize());
+        }
     }
 
     public Document getDocument() {
@@ -210,7 +222,9 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
 
     @Override
     public void onTextChanged(String before, String after) {
-
+        if (mBaseIndicator != null) {
+            mBaseIndicator.updateLineCount(mDocument.getLineCountForDraw());
+        }
     }
 
     // (x, y) is base on first char rather than screen left-top corner.
@@ -724,6 +738,10 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
         targetY = Math.min(maxScrollY, targetY);
 
         scrollTo(targetX, targetY);
+
+        if (mBaseIndicator != null) {
+            mBaseIndicator.onCodeSpaceScroll(targetX, targetY);
+        }
     }
 
 
@@ -807,14 +825,18 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
     }
 
     public void onLongPress(int x, int y) {
-        int[] range = getWordNearXY(x + getScrollX() - getPaddingStart(), y + getScrollY() - getPaddingTop());
-        mDocument.setSelection(range[0], range[1]);
-        notifySelectionChangeInvalidate();
+        if (!TextUtils.isEmpty(mDocument.toString())) {
+            int[] range = getWordNearXY(x + getScrollX() - getPaddingStart(), y + getScrollY() - getPaddingTop());
+            mDocument.setSelection(range[0], range[1]);
+            notifySelectionChangeInvalidate();
 
-        dismissInsertionHandle();
-        showSelectionHandle();
+            dismissInsertionHandle();
+            showSelectionHandle();
 
-        mActionMode = mActionCallback.startActionMode(this, false);
+            mActionMode = mActionCallback.startActionMode(this, false);
+        } else {
+            mActionMode = mActionCallback.startActionMode(this, true);
+        }
     }
 
     private class InsertionHandleListener implements OnTouchListener {

@@ -2,7 +2,7 @@ package coding.yu.codespace;
 
 import android.text.Selection;
 import android.text.SpannableStringBuilder;
-import android.util.Log;
+import android.text.TextUtils;
 import android.view.KeyEvent;
 import android.view.inputmethod.BaseInputConnection;
 
@@ -28,10 +28,25 @@ public class Document {
     private List<Token> mTokenList = new ArrayList<>();
     private Token mLastToken;
 
+    private String mBeforeEditStr = "";
+    private String mAfterEditStr = "";
+
+    private boolean needAnalyzeLine;
+
+    public void setNeedAnalyzeLine(boolean needAnalyze) {
+        this.needAnalyzeLine = needAnalyze;
+    }
+
     private OffsetMeasure mOffsetMeasure;
 
     public void setOffsetMeasure(OffsetMeasure offsetMeasure) {
         this.mOffsetMeasure = offsetMeasure;
+    }
+
+    private TextChangeListener mTextChangeListener;
+
+    public void setTextChangeListener(TextChangeListener listener) {
+        this.mTextChangeListener = listener;
     }
 
     //////////////////////   Edit  //////////////////////
@@ -155,6 +170,9 @@ public class Document {
     }
 
     public int getLineCountForDraw() {
+        if (needAnalyzeLine) {
+            analyzeLines();
+        }
         if (mText.length() == 0 || mText.charAt(mText.length() - 1) == '\n') {
             return mLines.size() + 1;
         }
@@ -394,6 +412,8 @@ public class Document {
         }
 
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
+            recordBeforeEdit();
+
             char ch = 0;
             if (handleControlKey(event)) {
                 // Do nothing...
@@ -409,6 +429,9 @@ public class Document {
                 replace(getSelectionStart(), getSelectionEnd(), ch);
                 setCursorPosition(getSelectionEnd());
             }
+
+            recordAfterEdit();
+            notifyTextChangedIfNeed();
         }
         return true;
     }
@@ -435,13 +458,37 @@ public class Document {
         }
 
         if (event.getKeyCode() == KeyEvent.KEYCODE_DEL) {
-            if (getCursorPosition() - 1 >= 0) {
-                delete(getCursorPosition() - 1, getCursorPosition());
+
+            if (hasSelection()) {
+                delete(getSelectionStart(), getSelectionEnd());
+                setCursorPosition(getSelectionEnd());
+            } else {
+                if (getCursorPosition() - 1 >= 0) {
+                    delete(getCursorPosition() - 1, getCursorPosition());
+                }
             }
             return true;
         }
 
         return false;
+    }
+
+    //////////////////////   Record Change   //////////////////////
+
+    public void recordBeforeEdit() {
+        mBeforeEditStr = mText.toString();
+    }
+
+    public void recordAfterEdit() {
+        mAfterEditStr = mText.toString();
+    }
+
+    public void notifyTextChangedIfNeed() {
+        if (!TextUtils.equals(mBeforeEditStr, mAfterEditStr)) {
+            if (mTextChangeListener != null) {
+                mTextChangeListener.onTextChanged(mBeforeEditStr, mAfterEditStr);
+            }
+        }
     }
 
 

@@ -30,13 +30,11 @@ public class TouchGestureListener extends GestureDetector.SimpleOnGestureListene
 
     @Override
     public boolean onDown(MotionEvent e) {
-        Log.e("Yu", "onDown:" + e.toString());
         return true;
     }
 
     @Override
     public boolean onSingleTapUp(MotionEvent e) {
-        Log.e("Yu", "onSingleTapUp:" + e.toString());
         IMEHelper.show(mCodeSpace);
         mCodeSpace.onSingleTapUp((int) e.getX(), (int) e.getY());
 
@@ -84,7 +82,8 @@ public class TouchGestureListener extends GestureDetector.SimpleOnGestureListene
 
     @Override
     public boolean onDoubleTap(MotionEvent e) {
-        return super.onDoubleTap(e);
+        mCodeSpace.onLongPress((int) e.getX(), (int) e.getY());
+        return true;
     }
 
     @Override
