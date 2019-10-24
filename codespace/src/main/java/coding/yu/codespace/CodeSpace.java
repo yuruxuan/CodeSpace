@@ -120,6 +120,8 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
         setLongClickable(true);
         setHapticFeedbackEnabled(true);
         requestFocus();
+
+        measureRect();
     }
 
     public Document getDocument() {
@@ -719,7 +721,7 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
         mInsertionHandle.dismiss();
     }
 
-    public void showSelectionHandle(Point start, Point end) {
+    private void showSelectionHandle(Point start, Point end) {
         if (mSelectionLeftHandle.isShowing()) {
             mSelectionLeftHandle.update(start.x, start.y);
         } else {
@@ -738,14 +740,12 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
         mSelectionRightHandle.dismiss();
     }
 
-    public void updateSelectionHandleOnScroll() {
-        if (mSelectionLeftHandle.isShowing() && mSelectionRightHandle.isShowing()) {
-            Point leftPoint = getPointOnScreen(mSelectionLeftHandlePoint);
-            leftPoint.offset(-getScrollX(), -getScrollY());
-            Point rightPoint = getPointOnScreen(mSelectionRightHandlePoint);
-            rightPoint.offset(-getScrollX(), -getScrollY());
-            showSelectionHandle(leftPoint, rightPoint);
-        }
+    public void showSelectionHandle() {
+        Point leftPoint = getPointOnScreen(mSelectionLeftHandlePoint);
+        leftPoint.offset(-getScrollX(), -getScrollY());
+        Point rightPoint = getPointOnScreen(mSelectionRightHandlePoint);
+        rightPoint.offset(-getScrollX(), -getScrollY());
+        showSelectionHandle(leftPoint, rightPoint);
     }
 
     //////////////////////   KeyEvent  //////////////////////
@@ -755,6 +755,9 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
         boolean result = mDocument.handleKeyEvent(event);
         if (result) {
             notifySelectionChangeInvalidate();
+            dismissInsertionHandle();
+            dismissSelectionHandle();
+            finishActionMode();
             postScrollFollowCursor();
         }
         return result;
@@ -782,20 +785,16 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
         notifySelectionChangeInvalidate();
 
         dismissInsertionHandle();
+        showSelectionHandle();
 
-        Point leftPoint = getPointOnScreen(mSelectionLeftHandlePoint);
-        leftPoint.offset(-getScrollX(), -getScrollY());
-        Point rightPoint = getPointOnScreen(mSelectionRightHandlePoint);
-        rightPoint.offset(-getScrollX(), -getScrollY());
-        showSelectionHandle(leftPoint, rightPoint);
-
-        mActionMode = mActionCallback.startActionMode(this);
+        mActionMode = mActionCallback.startActionMode(this, false);
     }
 
     private class InsertionHandleListener implements OnTouchListener {
 
         private Rect mGlobalVisibleRect = new Rect();
         private int mOffsetY;
+        private boolean isMoved;
 
         @Override
         public boolean onTouch(View v, MotionEvent e) {
@@ -804,6 +803,7 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
             switch (e.getAction()) {
                 case MotionEvent.ACTION_DOWN:
                     mOffsetY = (int) (e.getY() + mCursorRect.height() / 2);
+                    isMoved = false;
                     break;
                 case MotionEvent.ACTION_MOVE:
                     getGlobalVisibleRect(mGlobalVisibleRect);
@@ -812,7 +812,11 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
                     int offset = getOffsetNearXY(targetX, targetY - mOffsetY);
 
                     if (mDocument.getCursorPosition() != offset) {
+                        int oldPos = mDocument.getCursorPosition();
                         mDocument.moveCursor(offset, false);
+                        if (oldPos != mDocument.getCursorPosition()) {
+                            isMoved = true;
+                        }
                         measureRect();
                         invalidate();
 
@@ -824,6 +828,9 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
                     break;
                 case MotionEvent.ACTION_UP:
                     notifySelectionChangeInvalidate();
+                    if (!isMoved) {
+                        mActionMode = mActionCallback.startActionMode(CodeSpace.this, true);
+                    }
                     break;
             }
             return true;
@@ -883,12 +890,7 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
                         }
                         measureRect();
                         invalidate();
-
-                        Point leftPoint = getPointOnScreen(mSelectionLeftHandlePoint);
-                        leftPoint.offset(-getScrollX(), -getScrollY());
-                        Point rightPoint = getPointOnScreen(mSelectionRightHandlePoint);
-                        rightPoint.offset(-getScrollX(), -getScrollY());
-                        showSelectionHandle(leftPoint, rightPoint);
+                        showSelectionHandle();
                     }
 
                     break;

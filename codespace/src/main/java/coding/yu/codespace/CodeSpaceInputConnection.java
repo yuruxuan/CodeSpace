@@ -140,6 +140,8 @@ public class CodeSpaceInputConnection extends BaseInputConnection {
         mDocument.analyze();
         mCodeSpace.notifySelectionChangeInvalidate();
         mCodeSpace.dismissInsertionHandle();
+        mCodeSpace.dismissSelectionHandle();
+        mCodeSpace.finishActionMode();
         mCodeSpace.postScrollFollowCursor();
         return result;
     }

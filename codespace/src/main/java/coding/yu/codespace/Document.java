@@ -76,9 +76,22 @@ public class Document {
         analyze();
     }
 
+    public void replace(int start, int end, char c) {
+        mText.replace(start, end, String.valueOf(c));
+        analyze();
+    }
+
     public void delete(int start, int end) {
         mText.delete(start, end);
         analyze();
+    }
+
+    public void selectAll() {
+        Selection.selectAll(mText);
+    }
+
+    public void removeSelect() {
+        Selection.removeSelection(mText);
     }
 
     @Override
@@ -291,7 +304,7 @@ public class Document {
      * 8
      */
     public int getCursorPosition() {
-        return Selection.getSelectionStart(mText);
+        return Selection.getSelectionStart(mText) < 0 ? 0 : Selection.getSelectionStart(mText);
     }
 
     private void setCursorPosition(int position) {
@@ -360,15 +373,11 @@ public class Document {
     }
 
     public int getSelectionStart() {
-        return Selection.getSelectionStart(mText);
+        return Selection.getSelectionStart(mText) < 0 ? 0 : Selection.getSelectionStart(mText);
     }
 
     public int getSelectionEnd() {
-        return Selection.getSelectionEnd(mText);
-    }
-
-    public void selectAll() {
-        setSelection(0, mText.length());
+        return Selection.getSelectionEnd(mText) < 0 ? 0 : Selection.getSelectionEnd(mText);
     }
 
 
@@ -391,13 +400,16 @@ public class Document {
             if (handleControlKey(event)) {
                 // Do nothing...
             } else if ((ch = KeyCodeConverter.convertOther(event.getKeyCode())) != 0) {
-                insert(getCursorPosition(), ch);
+                replace(getSelectionStart(), getSelectionEnd(), ch);
+                setCursorPosition(getSelectionEnd());
             } else if ((ch = KeyCodeConverter.convertLetter(event.getKeyCode(),
                     event.isCapsLockOn() || event.isShiftPressed())) != 0) {
-                insert(getCursorPosition(), ch);
+                replace(getSelectionStart(), getSelectionEnd(), ch);
+                setCursorPosition(getSelectionEnd());
             } else if ((ch = KeyCodeConverter.convertNumSign(event.getKeyCode(),
                     event.isShiftPressed())) != 0) {
-                insert(getCursorPosition(), ch);
+                replace(getSelectionStart(), getSelectionEnd(), ch);
+                setCursorPosition(getSelectionEnd());
             }
         }
         return true;
