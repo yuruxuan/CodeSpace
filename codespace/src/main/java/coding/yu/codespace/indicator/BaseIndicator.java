@@ -21,7 +21,7 @@ public abstract class BaseIndicator extends View {
         super(context, attrs, defStyleAttr);
     }
 
-    public abstract void updateSizeInfo(float textSizePx);
+    public abstract void updateSizeInfo(float textSizePx, float rowHeight);
 
     public abstract void updateLineCount(int count);
 

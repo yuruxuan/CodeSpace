@@ -49,6 +49,10 @@ public class Document {
         this.mTextChangeListener = listener;
     }
 
+    public Document() {
+        setCursorPosition(0);
+    }
+
     //////////////////////   Edit  //////////////////////
 
     public void clear() {
@@ -171,7 +175,7 @@ public class Document {
 
     public int getLineCountForDraw() {
         if (needAnalyzeLine) {
-            analyzeLines();
+            analyze();
         }
         if (mText.length() == 0 || mText.charAt(mText.length() - 1) == '\n') {
             return mLines.size() + 1;

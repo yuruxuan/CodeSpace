@@ -133,7 +133,7 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
     public void bindLineIndicator(BaseIndicator indicator) {
         mBaseIndicator = indicator;
         if (mBaseIndicator != null) {
-            mBaseIndicator.updateSizeInfo(mTextPaint.getTextSize());
+            mBaseIndicator.updateSizeInfo(mTextPaint.getTextSize(), getRowHeight());
         }
     }
 
@@ -225,6 +225,19 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
         if (mBaseIndicator != null) {
             mBaseIndicator.updateLineCount(mDocument.getLineCountForDraw());
         }
+    }
+
+    @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+
+        measureRect();
+
+        Rect rect = getCursorRectOnScreen();
+        rect.offset(-getScrollX(), -getScrollY());
+        showInsertionHandle(rect);
+
+        updateSelectionHandleIfShown();
     }
 
     // (x, y) is base on first char rather than screen left-top corner.
@@ -406,6 +419,14 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
                 lineIndex * getRowHeight() + getPaddingTop(),
                 x + cursorWidth / 2,
                 (lineIndex + 1) * getRowHeight() + getPaddingTop());
+
+        if (mBaseIndicator != null) {
+            if (mDocument.hasSelection()) {
+                mBaseIndicator.currentLineIndex(-1);
+            } else {
+                mBaseIndicator.currentLineIndex(lineIndex);
+            }
+        }
     }
 
     private void measureSelectionRect() {
