@@ -232,12 +232,8 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
         super.onSizeChanged(w, h, oldw, oldh);
 
         measureRect();
-
-        Rect rect = getCursorRectOnScreen();
-        rect.offset(-getScrollX(), -getScrollY());
-        showInsertionHandle(rect);
-
-        updateSelectionHandleIfShown();
+        scrollFollowCursor();
+        updateInsertionHandleIfShown();
     }
 
     // (x, y) is base on first char rather than screen left-top corner.
@@ -773,6 +769,14 @@ public class CodeSpace extends View implements Document.OffsetMeasure, Document.
             mInsertionHandle.update((rect.left + rect.right) / 2, rect.bottom);
         } else {
             mInsertionHandle.show((rect.left + rect.right) / 2, rect.bottom);
+        }
+    }
+
+    public void updateInsertionHandleIfShown() {
+        if (mInsertionHandle.isShowing()) {
+            Rect rect = getCursorRectOnScreen();
+            rect.offset(-getScrollX(), -getScrollY());
+            showInsertionHandle(rect);
         }
     }
 
